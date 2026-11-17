@@ -366,7 +366,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v58 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v59 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -2022,7 +2022,7 @@ function renderHeadlines() {
     ${item.image ? `<a class="headline-img-link" href="${item.link}" target="_blank" rel="noopener"><img class="headline-img" src="${item.image}" alt="" onerror="this.parentNode.style.display='none'"></a>` : ''}
     <a class="headline-title" href="${item.link}" target="_blank" rel="noopener">${item.title}</a>
     ${item.summary ? `<div class="headline-summary">${item.summary}</div>` : ''}
-    <div class="meta">${item.source || ''}</div>
+    <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')}</div>
   </div>${dotsHtml(headlineItems.length, 1, index)}`;
   clearInterval(rotationTimers.headlines);
   if (headlineItems.length > 1) {
