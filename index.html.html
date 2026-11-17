@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Dashboard</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --text: #e2e8f0;
+  --accent: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --border: #334155;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: #1e293b;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+header h1 { margin: 0; font-size: 1.25rem; }
+#clock { font-variant-numeric: tabular-nums; opacity: 0.8; }
+#settings-btn, #download-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+#download-btn { margin-left: auto; margin-right: 0.4rem; background: #334155; }
+.dashboard {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-auto-flow: dense;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  overflow: hidden;
+}
+.dashboard.mode-auto {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+}
+.dashboard.mode-fixed {
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+}
+@media (max-width: 760px) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .dashboard,
+  .dashboard.mode-auto,
+  .dashboard.mode-fixed {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
+  .dashboard .panel {
+    width: 100%;
+    height: 72vh;
+    min-height: 420px;
+    flex: 0 0 auto;
+  }
+  header {
+    flex-wrap: wrap;
+    gap: 0.35rem 0.6rem;
+  }
+  header h1 { font-size: 1.15rem; }
+  #clock { font-size: 0.8rem; }
+  #settings-btn { margin-left: 0; }
+}
+.panel {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--border);
+  container-type: size;
+  container-name: widget;
+}
+.panel.hidden-widget { display: none; }
+.panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.4s ease;
+}
+.panel-content.fading {
+  opacity: 0.3;
+}
+.items-scroller {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.rot-dots {
+  flex: 0 0 auto;
+  text-align: center;
+  padding-top: 0.35rem;
+  line-height: 0;
+}
+.rot-dots .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  margin: 0 3px;
+}
+.rot-dots .dot.on { background: #3b82f6; }
+.item {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  overflow: hidden;
+}
+.item:last-child { border-bottom: none; }
+.item a { color: #93c5fd; text-decoration: none; overflow-wrap: anywhere; }
+.item a:hover { text-decoration: underline; }
+.news-item { display: block; }
+.news-thumb { float: left; width: 116px; height: 82px; object-fit: cover; border-radius: 6px; margin: 0.05rem 0.7rem 0.3rem 0; }
+.news-headline { font-size: 1.08rem; font-weight: 700; line-height: 1.28; }
+.news-headline img { width: 16px; height: 16px; vertical-align: -2px; margin-right: 0.28rem; }
+.news-headline a { font-weight: 700; }
+.stock-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: nowrap; }
+.stock-label { flex: 1 1 auto; min-width: 0; }
+.spark { flex: 1 1 42%; min-width: 28px; height: 28px; display: block; }
+.meta { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; overflow-wrap: anywhere; }
+@container widget (max-width: 340px) {
+  h2 { font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .item { font-size: 0.8rem; padding: 0.28rem 0; }
+  .weather-main { font-size: 1.35rem; }
+  .wx-card { padding: 0.25rem 0.05rem; }
+  .wx-card .wx-icon { font-size: 1rem; }
+}
+@container widget (min-width: 560px) {
+  .item { font-size: 1.02rem; }
+  .weather-main { font-size: 2.5rem; }
+  h2 { font-size: 1.15rem; }
+}
+@container widget (max-height: 220px) {
+  .item { padding: 0.2rem 0; }
+  .weather-main { font-size: 1.2rem; margin-bottom: 0; }
+  .wx-block { margin: 0.2rem 0 0.15rem; }
+}
+.widget-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  margin: 0.3rem 0;
+  border-radius: 6px;
+}
+.widget-row label { margin: 0; flex: 1; text-align: left; font-weight: 500; }
+.widget-row select { width: auto; min-width: 4.6rem; }
+.widget-row select[data-widget-refresh] { min-width: 3.6rem; }
+.drag-handle {
+  cursor: grab;
+  color: #94a3b8;
+  padding: 0.15rem 0.2rem;
+  user-select: none;
+  letter-spacing: -0.15em;
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+.widget-row.dragging { opacity: 0.45; }
+.widget-row.dragging .drag-handle { cursor: grabbing; }
+.widget-row.drop-before { box-shadow: inset 0 3px 0 #60a5fa; background: rgba(59, 130, 246, 0.28); }
+.widget-row.drop-after { box-shadow: inset 0 -3px 0 #60a5fa; background: rgba(59, 130, 246, 0.28); }
+.team-list {
+  max-height: min(52vh, 24rem);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  margin: 0.3rem 0 0.6rem;
+  background: rgba(0,0,0,0.15);
+}
+#league-tabs { flex-wrap: wrap; }
+.team-list label { display: block; margin: 0.2rem 0; font-size: 0.85rem; }
+.team-league { font-size: 0.7rem; letter-spacing: 0.04em; opacity: 0.7; margin-top: 0.35rem; }
+.settings-tabs { display: flex; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
+.settings-tabs .tab {
+  background: #334155;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.settings-tabs .tab.on { background: var(--accent); color: white; border-color: var(--accent); }
+#tab-feeds.hidden, #tab-layout.hidden, #tab-teams.hidden { display: none; }
+.score { font-weight: 600; }
+.change-up { color: var(--green); }
+.change-down { color: var(--red); }
+.weather-main { font-size: 1.8rem; font-weight: 700; }
+.forecast { display: flex; gap: 0.5rem; overflow-x: auto; font-size: 0.8rem; margin-top: 0.5rem; }
+.forecast-day { min-width: 70px; text-align: center; background: rgba(0,0,0,0.2); padding: 0.4rem; border-radius: 6px; }
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal.hidden { display: none; }
+.modal-content {
+  background: #1e293b;
+  padding: 1.25rem;
+  border-radius: 12px;
+  width: min(600px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+}
+.modal h2 { margin-top: 0; }
+label { display: block; margin: 0.6rem 0 0.2rem; font-weight: 500; }
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.5rem; }
+.checkbox-group label { font-weight: normal; margin: 0; }
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0f172a;
+  color: var(--text);
+  font-family: inherit;
+}
+textarea { min-height: 70px; resize: vertical; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: pointer; }
+#save-settings { background: var(--accent); color: white; }
+#cancel-settings { background: #475569; color: white; }
+.loading { opacity: 0.6; font-style: italic; }
+.error { color: #f87171; font-size: 0.85rem; }
+#weather-content { overflow: auto; }
+.wx-hours, .wx-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; width: 100%; }
+.wx-hours .wx-card, .wx-days .wx-card { min-width: 0; padding: 0.28rem 0.05rem; }
+.clock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; align-content: start; }
+@container widget (min-height: 520px) {
+  .clock-grid { grid-template-columns: 1fr; }
+}
+.clock-card { position: relative; overflow: hidden; background: #0f172a; border-radius: 8px; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 0.45rem 0.55rem 0.4rem; min-height: 172px; }
+.clock-card.day { background: #12345f; }
+.clock-card.night { background: #0b1020; }
+.sun-stage { position: absolute; left: 0; right: 0; top: 0; bottom: 2.15rem; height: auto; z-index: 0; pointer-events: none; }
+.clock-head { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 54px; }
+.clock-meta { min-width: 0; flex: 1 1 auto; text-align: left; }
+.clock-meta .meta { opacity: 0.92; }
+.analog { width: 54px; height: 54px; min-width: 54px; max-width: 54px; display: block; flex: 0 0 54px; margin-left: auto; position: relative; z-index: 1; }
+.clock-time { position: absolute; left: 50%; top: calc(66% - 0.2rem); transform: translate(-50%, -50%); margin: 0; z-index: 1; text-align: center; font-size: 2.25rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
+.sun-arc { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; z-index: 0; display: block; }
+.sun-times { position: absolute; left: 0.55rem; right: 0.55rem; bottom: 0.35rem; z-index: 1; display: flex; justify-content: space-between; width: auto; margin: 0; font-size: 0.78rem; font-weight: 650; }
+.sun-times em { display: block; font-style: normal; font-weight: 500; opacity: 0.8; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.clock-grid.compact .analog { width: 48px; height: 48px; min-width: 48px; max-width: 48px; flex-basis: 48px; }
+.clock-grid.compact .sun-times { font-size: 0.68rem; }
+.clock-grid.compact .clock-time { font-size: 1.7rem; }
+#clocks-content { overflow: hidden; }
+.sun-marker { position: absolute; z-index: 1; width: 14px; height: 14px; margin: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #fffbeb; box-shadow: 0 0 12px 5px rgba(251,191,36,0.55); }
+.sun-marker.moon { background: #e8eef9; box-shadow: 0 0 10px 4px rgba(226,232,240,0.4); }
+.sun-marker.moon::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #121a2b; left: 5px; top: -2px; }
+.moon-disk { width: 64px; height: 64px; flex-shrink: 0; display: block; }
+.moon-row { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.45rem; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 0.35rem 0.55rem; }
+.headline-summary { display: none; }
+@container widget (min-height: 340px) {
+  .headline-summary { display: block; overflow: hidden; max-height: 38%; margin-top: 0.35rem; font-size: 0.92rem; line-height: 1.35; opacity: 0.92; }
+}
+.headline-slide { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.headline-img-link { display: flex; flex: 1; min-height: 0; }
+.headline-img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; background: #0f172a; }
+.headline-title { display: block; font-size: 1.02rem; font-weight: 700; line-height: 1.25; margin-top: 0.4rem; color: #e2e8f0; text-decoration: none; }
+footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>News Dashboard <span style="font-size:0.7rem;opacity:0.6;background:#3b82f6;color:white;padding:0.1rem 0.4rem;border-radius:4px">(v56)</span></h1>
+  <div id="clock"></div>
+  <button id="download-btn">Download index.html</button>
+  <button id="settings-btn">⚙️ Settings</button>
+</header>
+<main class="dashboard" id="dashboard">
+  <section class="panel" id="news-panel">
+    <h2>📰 News</h2>
+    <div class="panel-content" id="news-content"><div class="loading">Loading news…</div></div>
+  </section>
+  <section class="panel" id="local-news-panel">
+    <h2>📍 Local News</h2>
+    <div class="panel-content" id="local-news-content"><div class="loading">Loading local news…</div></div>
+  </section>
+  <section class="panel" id="intl-news-panel">
+    <h2>🌍 International News</h2>
+    <div class="panel-content" id="intl-news-content"><div class="loading">Loading international news…</div></div>
+  </section>
+  <section class="panel" id="sports-panel">
+    <h2>🏆 Sports</h2>
+    <div class="panel-content" id="sports-content"><div class="loading">Loading scores…</div></div>
+  </section>
+  <section class="panel" id="weather-panel">
+    <h2>🌤️ Weather</h2>
+    <div class="panel-content" id="weather-content"><div class="loading">Loading weather…</div></div>
+  </section>
+  <section class="panel" id="stocks-panel">
+    <h2>📈 Stocks</h2>
+    <div class="panel-content" id="stocks-content"><div class="loading">Loading stocks…</div></div>
+  </section>
+  <section class="panel" id="clocks-panel">
+    <h2>🕐 World Clocks</h2>
+    <div class="panel-content" id="clocks-content"><div class="loading">Loading clocks…</div></div>
+  </section>
+  <section class="panel" id="tech-panel">
+    <h2>💻 Tech Wire</h2>
+    <div class="panel-content" id="tech-content"><div class="loading">Loading tech…</div></div>
+  </section>
+  <section class="panel" id="headlines-panel">
+    <h2>🖼️ Headlines</h2>
+    <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
+  </section>
+</main>
+<footer>Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+
+<div id="settings-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Settings <span style="font-size:0.75rem;opacity:0.6">(v56)</span></h2>
+    <div class="settings-tabs">
+      <button type="button" class="tab on" data-tab="layout">Layout</button>
+      <button type="button" class="tab" data-tab="feeds">Feeds</button>
+      <button type="button" class="tab" data-tab="teams">Teams</button>
+    </div>
+    <div id="tab-layout">
+      <label>Canvas</label>
+      <select id="canvas-mode">
+        <option value="auto">Auto — columns follow the window</option>
+        <option value="fixed">Fixed columns and rows</option>
+      </select>
+      <div id="canvas-fixed-fields">
+        <label>Columns</label>
+        <input type="number" id="canvas-cols" min="1" max="6" value="3">
+        <label>Rows</label>
+        <input type="number" id="canvas-rows" min="1" max="6" value="2">
+      </div>
+      <p class="hint">Columns and rows apply in Fixed mode. In Auto, columns follow the window. A 1×1 widget stretches into leftover space. Drag the handle to reorder.</p>
+      <label>Widgets — show, and size</label>
+      <div id="widget-settings"></div>
+    </div>
+    <div id="tab-feeds" class="hidden">
+    <label>News Outlets</label>
+    <div class="checkbox-group" id="outlets-group"></div>
+    <label>News Categories</label>
+    <div class="checkbox-group" id="categories-group"></div>
+    <label>Weather Location</label>
+    <input type="text" id="weather-location" placeholder="City, e.g. Los Angeles">
+    <label>World clocks</label>
+    <input type="search" id="clock-search" placeholder="Search cities, e.g. Tokyo, London, Cairo">
+    <div id="clock-list" class="team-list"></div>
+    <label>Local News Location (defaults to weather location)</label>
+    <input type="text" id="local-news-location" placeholder="City for local news">
+    <label>International News Country</label>
+    <select id="intl-country">
+      <option value="all">All International</option>
+      <option value="US">United States</option>
+      <option value="GB">United Kingdom</option>
+      <option value="CA">Canada</option>
+      <option value="AU">Australia</option>
+      <option value="DE">Germany</option>
+      <option value="FR">France</option>
+      <option value="IL">Israel</option>
+      <option value="JP">Japan</option>
+      <option value="IN">India</option>
+      <option value="BR">Brazil</option>
+      <option value="MX">Mexico</option>
+      <option value="IT">Italy</option>
+      <option value="ES">Spain</option>
+      <option value="NL">Netherlands</option>
+      <option value="SE">Sweden</option>
+      <option value="NO">Norway</option>
+      <option value="KR">South Korea</option>
+      <option value="SG">Singapore</option>
+      <option value="ZA">South Africa</option>
+      <option value="AR">Argentina</option>
+      <option value="CL">Chile</option>
+      <option value="PL">Poland</option>
+      <option value="TR">Turkey</option>
+      <option value="EG">Egypt</option>
+      <option value="NG">Nigeria</option>
+      <option value="PH">Philippines</option>
+      <option value="ID">Indonesia</option>
+      <option value="TH">Thailand</option>
+      <option value="VN">Vietnam</option>
+    </select>
+    <label>Stock Tickers (comma-separated, e.g. AAPL, MSFT, SPY, ^GSPC)</label>
+    <textarea id="stocks-list" placeholder="AAPL, MSFT, GOOGL, ..."></textarea>
+    <label>Content rotation speed (seconds)</label>
+    <input type="number" id="rotation-seconds" min="5" max="120" value="10">
+    <label>Max news age (hours, older items hidden)</label>
+    <input type="number" id="max-age" min="1" max="168" value="24">
+    </div>
+    <div id="tab-teams" class="hidden">
+      <p class="hint">Each tab is one league. Star the teams you want pinned. “Rest of” is per league and saves automatically.</p>
+      <div class="settings-tabs" id="league-tabs"></div>
+      <label id="show-league-label"><input type="checkbox" id="show-league"> Show this league</label>
+      <label id="rest-league-label"><input type="checkbox" id="rest-league"> Show the rest of this league</label>
+      <input type="search" id="team-search" placeholder="Search teams in this league">
+      <div id="team-list" class="team-list"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancel-settings">Close</button>
+      <button id="save-settings">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://proxy.cors.dev/';
+const defaultSettings = {
+  outlets: ['fox', 'cnn', 'reuters'],
+  categories: ['politics', 'tech', 'business'],
+  sportsLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
+  favoriteTeams: [],
+  restLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
+  weatherLocation: 'Los Angeles',
+  localNewsLocation: '',
+  intlCountry: 'US',
+  clocks: [
+    { label: 'Los Angeles', tz: 'America/Los_Angeles', lat: 34.05, lon: -118.24 },
+    { label: 'New York', tz: 'America/New_York', lat: 40.71, lon: -74.01 },
+    { label: 'London', tz: 'Europe/London', lat: 51.51, lon: -0.13 },
+    { label: 'Tokyo', tz: 'Asia/Tokyo', lat: 35.68, lon: 139.69 }
+  ],
+  stocks: ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','SPY','QQQ','DIA','^GSPC','^DJI','^IXIC','SPCX'],
+  rotationSeconds: 10,
+  maxNewsAgeHours: 24,
+  widgets: {
+    news: { visible: true, size: '2x1' },
+    local: { visible: true, size: '1x1' },
+    intl: { visible: true, size: '1x1' },
+    sports: { visible: true, size: '1x1' },
+    weather: { visible: true, size: '1x1' },
+    stocks: { visible: true, size: '1x1' },
+    clocks: { visible: true, size: '1x1' },
+    tech: { visible: true, size: '1x1' },
+    headlines: { visible: true, size: '2x1' }
+  },
+  canvas: { mode: 'auto', columns: 3, rows: 2 }
+};
+
+const WIDGET_IDS = {
+  news: ['news-panel', 'News'],
+  local: ['local-news-panel', 'Local News'],
+  intl: ['intl-news-panel', 'International'],
+  sports: ['sports-panel', 'Sports'],
+  weather: ['weather-panel', 'Weather'],
+  stocks: ['stocks-panel', 'Stocks'],
+  clocks: ['clocks-panel', 'World Clocks'],
+  tech: ['tech-panel', 'Tech Wire'],
+  headlines: ['headlines-panel', 'Headlines']
+};
+
+const REFRESH_DEFAULTS = {
+  news: 600, local: 600, intl: 600, headlines: 600,
+  sports: 60, weather: 300, stocks: 60, tech: 300, clocks: 30
+};
+
+function ensureWidgets() {
+  settings.canvas = { ...defaultSettings.canvas, ...(settings.canvas || {}) };
+  settings.widgets = settings.widgets || {};
+  for (const key of Object.keys(defaultSettings.widgets)) {
+    settings.widgets[key] = { ...defaultSettings.widgets[key], ...(settings.widgets[key] || {}) };
+    if (!settings.widgets[key].refreshSeconds) settings.widgets[key].refreshSeconds = REFRESH_DEFAULTS[key] || 60;
+  }
+  const known = Object.keys(WIDGET_IDS);
+  if (!Array.isArray(settings.widgetOrder)) settings.widgetOrder = known.slice();
+  settings.widgetOrder = settings.widgetOrder.filter(k => known.includes(k));
+  for (const key of known) if (!settings.widgetOrder.includes(key)) settings.widgetOrder.push(key);
+}
+
+function packWidgets(items, cols, rowLimit, growVertical) {
+  const occ = new Map();
+  const cell = (x, y) => x + ',' + y;
+  function free(x, y, w, h) {
+    if (x < 0 || y < 0 || x + w > cols) return false;
+    if (rowLimit && y + h > rowLimit) return false;
+    for (let yy = y; yy < y + h; yy++) {
+      for (let xx = x; xx < x + w; xx++) if (occ.has(cell(xx, yy))) return false;
+    }
+    return true;
+  }
+  function paint(item) {
+    for (let yy = item.row; yy < item.row + item.r; yy++) {
+      for (let xx = item.col; xx < item.col + item.c; xx++) occ.set(cell(xx, yy), item.key);
+    }
+  }
+  function erase(item) {
+    for (const [k, v] of occ) if (v === item.key) occ.delete(k);
+  }
+  const placed = [];
+  for (const item of items) {
+    let done = false;
+    const tryPlace = (w, h) => {
+      for (let y = 0; y < 12 && !done; y++) {
+        if (rowLimit && y + h > rowLimit) break;
+        for (let x = 0; x < cols && !done; x++) {
+          if (!free(x, y, w, h)) continue;
+          item.col = x; item.row = y; item.c = w; item.r = h;
+          paint(item);
+          done = true;
+        }
+      }
+    };
+    tryPlace(Math.min(item.c, cols), item.r);
+    if (!done) tryPlace(1, 1);
+    if (!done) {
+      const y = rowLimit || 0;
+      item.col = 0; item.row = placed.reduce((m, p) => Math.max(m, p.row + p.r), 0);
+      item.c = 1; item.r = 1;
+      paint(item);
+      done = true;
+    }
+    if (done) placed.push(item);
+  }
+  let guard = 0;
+  let changed = true;
+  while (changed && guard++ < 12) {
+    changed = false;
+    for (const item of placed) {
+      if (item.baseC !== 1 || item.baseR !== 1 || item.r >= 2) continue;
+      erase(item);
+      const h = item.r + 1;
+      const within = !rowLimit || item.row + h <= rowLimit;
+      if (within && free(item.col, item.row, item.c, h)) {
+        item.r = h;
+        changed = true;
+      }
+      paint(item);
+    }
+  }
+  return placed;
+}
+
+function measuredColumns(board) {
+  const raw = getComputedStyle(board).gridTemplateColumns;
+  if (!raw || raw === 'none') return Math.max(1, settings.canvas.columns || 3);
+  const tracks = raw.split(' ').filter(t => t && t !== 'none');
+  return Math.max(1, tracks.length || 1);
+}
+
+function applyLayout() {
+  ensureWidgets();
+  const board = document.getElementById('dashboard');
+  if (!board) return;
+  const fixed = settings.canvas.mode === 'fixed';
+  const cols = Math.max(1, Math.min(6, parseInt(settings.canvas.columns, 10) || 3));
+  const rows = Math.max(1, Math.min(6, parseInt(settings.canvas.rows, 10) || 2));
+  settings.canvas.columns = cols;
+  settings.canvas.rows = rows;
+  board.classList.toggle('mode-fixed', fixed);
+  board.classList.toggle('mode-auto', !fixed);
+  board.style.setProperty('--cols', cols);
+  board.style.setProperty('--rows', rows);
+  const available = fixed ? cols : measuredColumns(board);
+  const items = [];
+  for (const key of settings.widgetOrder) {
+    const [id] = WIDGET_IDS[key] || [];
+    const el = id && document.getElementById(id);
+    if (!el) continue;
+    const spec = settings.widgets[key];
+    el.classList.toggle('hidden-widget', !spec.visible);
+    if (!spec.visible) {
+      el.style.gridColumn = '';
+      el.style.gridRow = '';
+      continue;
+    }
+    board.appendChild(el);
+    const parts = String(spec.size || '1x1').split('x');
+    let c = Math.max(1, parseInt(parts[0], 10) || 1);
+    let r = Math.max(1, parseInt(parts[1], 10) || 1);
+    if (c > available) c = available;
+    if (fixed && r > rows) r = rows;
+    items.push({ key, el, c, r, baseC: c, baseR: r, col: 0, row: 0 });
+  }
+  const placed = packWidgets(items, available, fixed ? rows : 0, fixed);
+  for (const item of placed) {
+    item.el.style.gridColumn = `${item.col + 1} / span ${item.c}`;
+    item.el.style.gridRow = `${item.row + 1} / span ${item.r}`;
+  }
+}
+
+const outletFeeds = {
+  fox: {
+    politics: 'https://moxie.foxnews.com/google-publisher/politics.xml',
+    tech: 'https://moxie.foxnews.com/google-publisher/tech.xml',
+    business: 'https://moxie.foxnews.com/google-publisher/latest.xml',
+    latest: 'https://moxie.foxnews.com/google-publisher/latest.xml'
+  },
+  cnn: {
+    politics: 'https://openrss.org/feed/www.cnn.com/politics',
+    tech: 'https://openrss.org/feed/www.cnn.com/business/tech',
+    business: 'https://openrss.org/feed/www.cnn.com/business',
+    latest: 'https://openrss.org/feed/www.cnn.com'
+  },
+  reuters: {
+    politics: 'https://openrss.org/feed/www.reuters.com/world',
+    tech: 'https://openrss.org/feed/www.reuters.com/technology',
+    business: 'https://openrss.org/feed/www.reuters.com/business',
+    latest: 'https://openrss.org/feed/www.reuters.com'
+  }
+};
+
+const leagueMap = {
+  nfl: { sport: 'football', league: 'nfl', name: 'NFL' },
+  nba: { sport: 'basketball', league: 'nba', name: 'NBA' },
+  mlb: { sport: 'baseball', league: 'mlb', name: 'MLB' },
+  ncaaf: { sport: 'football', league: 'college-football', name: 'NCAAF' },
+  ncaab: { sport: 'basketball', league: 'mens-college-basketball', name: 'NCAAB' },
+  nhl: { sport: 'hockey', league: 'nhl', name: 'NHL' },
+  mls: { sport: 'soccer', league: 'usa.1', name: 'MLS' }
+};
+
+const TEAMS = {
+  nfl: [['ARI','Cardinals'],['ATL','Falcons'],['BAL','Ravens'],['BUF','Bills'],['CAR','Panthers'],['CHI','Bears'],['CIN','Bengals'],['CLE','Browns'],['DAL','Cowboys'],['DEN','Broncos'],['DET','Lions'],['GB','Packers'],['HOU','Texans'],['IND','Colts'],['JAX','Jaguars'],['KC','Chiefs'],['LV','Raiders'],['LAC','Chargers'],['LAR','Rams'],['MIA','Dolphins'],['MIN','Vikings'],['NE','Patriots'],['NO','Saints'],['NYG','Giants'],['NYJ','Jets'],['PHI','Eagles'],['PIT','Steelers'],['SF','49ers'],['SEA','Seahawks'],['TB','Buccaneers'],['TEN','Titans'],['WAS','Commanders']],
+  nba: [['ATL','Hawks'],['BOS','Celtics'],['BKN','Nets'],['CHA','Hornets'],['CHI','Bulls'],['CLE','Cavaliers'],['DAL','Mavericks'],['DEN','Nuggets'],['DET','Pistons'],['GSW','Warriors'],['HOU','Rockets'],['IND','Pacers'],['LAC','Clippers'],['LAL','Lakers'],['MEM','Grizzlies'],['MIA','Heat'],['MIL','Bucks'],['MIN','Timberwolves'],['NOP','Pelicans'],['NYK','Knicks'],['OKC','Thunder'],['ORL','Magic'],['PHI','76ers'],['PHX','Suns'],['POR','Trail Blazers'],['SAC','Kings'],['SAS','Spurs'],['TOR','Raptors'],['UTA','Jazz'],['WAS','Wizards']],
+  mlb: [['ARI','Diamondbacks'],['ATL','Braves'],['BAL','Orioles'],['BOS','Red Sox'],['CHC','Cubs'],['CWS','White Sox'],['CIN','Reds'],['CLE','Guardians'],['COL','Rockies'],['DET','Tigers'],['HOU','Astros'],['KC','Royals'],['LAA','Angels'],['LAD','Dodgers'],['MIA','Marlins'],['MIL','Brewers'],['MIN','Twins'],['NYM','Mets'],['NYY','Yankees'],['ATH','Athletics'],['PHI','Phillies'],['PIT','Pirates'],['SD','Padres'],['SF','Giants'],['SEA','Mariners'],['STL','Cardinals'],['TB','Rays'],['TEX','Rangers'],['TOR','Blue Jays'],['WSH','Nationals']],
+  ncaaf: [["ACU","Abilene Chrstn"],["ADSU","Adams St"],["ADR","Adrian"],["AF","Air Force"],["AKR","Akron"],["ALA","Alabama"],["AAMU","Alabama A&M"],["ALST","Alabama St"],["ABSU","Albany St"],["ALBI","Albion"],["ALBR","Albright"],["ALCN","Alcorn St"],["ALFR","Alfred"],["AFST","Alfred St"],["ALLG","Allegheny"],["ALNU","Allen"],["ALMA","Alma"],["ALVR","Alvernia"],["AIC","American Int'l"],["AMH","Amherst"],["ANIN","Anderson (IN)"],["ANSC","Anderson (SC)"],["ANDR","Andrew"],["AGSU","Angelo St"],["APP","App State"],["APPRE","Apprentice"],["UAPB","AR-Pine Bluff"],["ARIZ","Arizona"],["ASU","Arizona St"],["ARBA","Ark Baptist"],["ARK","Arkansas"],["ARST","Arkansas St"],["ARTE","Arkansas Tech"],["ARMY","Army"],["ASH","Ashland"],["ASP","Assumption"],["AUB","Auburn"],["AUGS","Augsburg"],["AUGC","Augustana (IL)"],["AUSD","Augustana (SD)"],["AUR","Aurora"],["AUS","Austin"],["APSU","Austin Peay"],["AVE M","Ave Maria"],["AVER","Averett"],["AVILA","Avila"],["AZCH","AZ Christian"],["APU","Azusa Pacific"],["BAK","Baker"],["BW","Baldwin Wall"],["BALL","Ball State"],["BART","Barton"],["BATE","Bates"],["BAY","Baylor"],["BELH","Belhaven"],["BELO","Beloit"],["BST","Bemidji St"],["BEN","Benedict"],["BNIL","Benedictine IL"],["BENT","Bentley"],["BERR","Berry"],["BYKS","Bethany (KS)"],["BCWV","Bethany (WV)"],["BUMN","Bethel (MN)"],["BTTN","Bethel (TN)"],["BCU","Bethune"],["BHSU","Black Hills St"],["BBU","Bloomsburg"],["BLU","Bluefield"],["BLUS","Bluefield St"],["BLF","Bluffton"],["BENC","Bndctn Col"],["BOIS","Boise St"],["BC","Boston College"],["BOW","Bowdoin"],["BOWE","Bowie St"],["BGSU","Bowling Green"],["BRE","Brevard"],["BRI","Bridgewater"],["BRIS","Bridgewater St"],["BBM","Britsh Col"],["BRO","Brockport"],["BRWN","Brown"],["BRY","Bryant"],["BUCK","Bucknell"],["BVU","Buena Vista"],["BUF","Buffalo"],["BSU","Buffalo St"],["BTLR","Butler"],["BYU","BYU"],["CARK","C Arkansas"],["CCSU","C Connecticut"],["CDF","C Methodst"],["CMU","C Michigan"],["UCM","C Missouri"],["FAI","C of Faith"],["UCO","C Oklahoma"],["CWAU","C Washington"],["CAPA","Cal (PA)"],["CLU","Cal Lutheran"],["CP","Cal Poly"],["CAL","California"],["CALU","Calvin"],["CAM","Campbell"],["CBVU","Campbellsville"],["CAPU","Capital"],["CAR","Carleton"],["CGMU","Carn Mellon"],["CRU","Carroll (WI)"],["CN","Carson Newman"],["CCW","Carthage"],["CWRU","Case Western"],["CAT","Catawba"],["CATH","Catholic"],["CTLA","Centenary (LA)"],["CNTC","Central Col"],["CNSU","Central St"],["CCO","Centre"],["CHAD","Chadron St"],["CHAP","Chapman"],["CHSO","Charleston So"],["UCWV","Charleston WV"],["CLT","Charlotte"],["UTC","Chattanooga"],["CHI","Chicago"],["CHST","Chicago St"],["CWAN","Chowan"],["CNU","Chris Newport"],["CIN","Cincinnati"],["CMS","Claremont-M-S"],["CLRN","Clarion"],["CKGA","Clark (GA)"],["CLEM","Clemson"],["CUMBTN","Cmbrlnd TN"],["CONCMI","Cncrdia MI"],["CONCONE","Cncrdia NE"],["USCG","Coast Guard"],["CCU","Coastal"],["COE","Coe"],["CLBY","Colby"],["COLE","Cole"],["COLG","Colgate"],["COI","Coll. of Idaho"],["TCNJ","College of NJ"],["COLO","Colorado"],["COMU","Colorado Mesa"],["CMIN","Colorado Mines"],["CSU","Colorado St"],["COLU","Columbia"],["CONC","Concord"],["CCMN","Concordia (MN)"],["CUW","Concordia (WI)"],["CUC","Concordia Chi"],["CSP","Concordia St P"],["COR","Cornell"],["CNIA","Cornell (IA)"],["CRWN","Crown"],["CSUP","CSU Pueblo"],["CULVE","Culvr-Stck"],["CMBS","Cumberlands"],["CC","Curry"],["DAKOT","Dakota St"],["DWU","Dakota Wes"],["DART","Dartmouth"],["DVPT","Davenport"],["DAV","Davidson"],["DAY","Dayton"],["DEAN","Dean"],["DEF","Defiance"],["DVU","Del Val"],["DEL","Delaware"],["DSU","Delaware St"],["DLST","Delta St"],["DSN","Denison"],["DPU","DePauw"],["DKSN","Dickinson"],["DIC","Dicknsn St"],["DRKE","Drake"],["DBQ","Dubuque"],["DUKE","Duke"],["DUQ","Duquesne"],["EIU","E Illinois"],["EKU","E Kentucky"],["EMU","E Michigan"],["EORE","E Oregon"],["ESU","E Stroudsburg"],["ETBU","E TX Baptist"],["EWU","E Washington"],["ECU","East Carolina"],["ECNU","East Central"],["ETAM","East Texas A&M"],["EU","Eastern"],["ENMU","Eastern NM"],["EDBR","Edinboro"],["EDW","Edward Waters"],["ECSU","Elizabeth City"],["ELMH","Elmhurst"],["ELON","Elon"],["EHC","Emory & Henry"],["EMSU","Emporia St"],["ENDC","Endicott"],["ERSK","Erskine"],["ETSU","ETSU"],["ERKA","Eureka"],["EVA","Evangel"],["FMSU","Fairmont St"],["COLLE","Faith NC"],["FAU","FAU"],["FAULKNER","Faulkner"],["FAYU","Fay'ville St"],["FDUF","FDU Florham"],["FRST","Ferris St"],["FC","Ferrum"],["UF","Findlay"],["FBSU","Fitchburg St"],["FIU","FIU"],["FMU","FL Memorial"],["FLA","Florida"],["FAMU","Florida A&M"],["FSU","Florida St"],["FOR","Fordham"],["FHSU","Fort Hays"],["FLWC","Fort Lewis"],["FVSU","Fort Valley St"],["FRSU","Framingham St"],["FRKL","Franklin"],["FMC","Franklin Marsh"],["FRES","Fresno St"],["FRIE","Friends"],["FP","Frnklin Pierce"],["FSTU","Frostburg St"],["FUR","Furman"],["GASO","GA Southern"],["GLDT","Gallaudet"],["GANN","Gannon"],["GWEB","Gardner-Webb"],["GEN","Geneva"],["GFU","George Fox"],["GMU","George Mason"],["GTWN","Georgetown"],["GTKY","Georgetown KY"],["UGA","Georgia"],["GAST","Georgia St"],["GT","Georgia Tech"],["GTYB","Gettysburg"],["GVLS","Glenville St"],["GRC","Graceland"],["GRAM","Grambling"],["GVSU","Grand Val St"],["GRANDVIEW","Grand View"],["GRNB","Greensboro"],["GRNV","Greenville"],["GRNL","Grinnell"],["GRO","Grove City"],["GLFD","Guilford"],["GAC","Gustavus"],["HAM","Hamilton"],["HMLN","Hamline"],["HSC","Hampden Sydney"],["HAMP","Hampton"],["HNVR","Hanover"],["HSU","Hardin Simmons"],["HARD","Harding"],["HRTW","Hartwick"],["HARV","Harvard"],["HASKELL","Haskell"],["HAW","Hawai'i"],["HDBG","Heidelberg"],["HSTU","Henderson St"],["HDX","Hendrix"],["HLBT","Hilbert"],["HLDL","Hillsdale"],["HIRM","Hiram"],["HBRT","Hobart"],["HOL","Holland College"],["HC","Holy Cross"],["HOPE","Hope"],["HCU","Hou Christian"],["HOU","Houston"],["HOW","Howard"],["HWPU","Howard Payne"],["HVCC","Hudson"],["HNTC","Huntingdon"],["HUSS","Husson"],["IDHO","Idaho"],["IDST","Idaho St"],["ILWU","IL Wesleyan"],["ILL","Illinois"],["ILLC","Illinois Col"],["ILST","Illinois St"],["UIW","Incarnate Word"],["IU","Indiana"],["INST","Indiana St"],["INDY","Indianapolis"],["INWESL","INDWESLYAN"],["IOWA","Iowa"],["ISU","Iowa State"],["ITH","Ithaca"],["IUP","IU Penn"],["JKST","Jackson St"],["JMU","James Madison"],["UJ","Jamestown"],["JXST","Jax State"],["JCU","John Carroll"],["JHU","Johns Hopkins"],["JCSU","Johnson C Smth"],["JUDSO","JUDSON"],["JUN","Juniata"],["KALC","Kalamazoo"],["KU","Kansas"],["KSU","Kansas St"],["KYCHR","KCU"],["KEAN","Kean"],["KEISER","Keiser Univers"],["KENN","Kennesaw St"],["KENT","Kent State"],["UK","Kentucky"],["KYSU","Kentucky St"],["KNY","Kenyon"],["KYSN","Keystone"],["KNGS","King's"],["KNOX","Knox"],["KANSA","KS Weslyan"],["KUTZ","Kutztown"],["KWC","KY Wesleyan"],["LCHR","LA Christian"],["ULV","La Verne"],["LAF","Lafayette"],["LGC","LaGrange"],["LKER","Lake Erie"],["LFC","Lake Forest"],["LKLD","Lakeland"],["LAM","Lamar"],["LANE","Lane College"],["LNGT","Langston"],["LAW","Lawrence"],["LVC","Lebanon Valley"],["LEH","Lehigh"],["LENR","Lenoir Rhyne"],["LC","Lewis & Clark"],["LIB","Liberty"],["LNCA","Lincoln (CA)"],["LNMO","Lincoln (MO)"],["LNPA","Lincoln (PA)"],["LINB","Lind Bellv"],["LIN","Lindenwood"],["LWU","Lindsey Wilson"],["LINF","Linfield"],["LIV","Livingstone"],["LHU","Lock Haven"],["LIU","Long Island"],["LOR","Loras"],["UL","Louisiana"],["LT","Louisiana Tech"],["LOU","Louisville"],["LSU","LSU"],["LUTH","Luther"],["LYCO","Lycoming"],["LYON","Lyon"],["MAC","Macalester"],["MDNN","Madonna"],["ME","Maine"],["UMMA","Maine Maritime"],["MNCH","Manchester"],["MB","Manitoba"],["MNFD","Mansfield"],["MUIN","Marian (IN)"],["MRTT","Marietta"],["MRST","Marist"],["MHU","Mars Hill"],["MRSH","Marshall"],["MLC","Martin Luther"],["MHB","Mary Hardin"],["MD","Maryland"],["MCTN","Maryville (TN)"],["MMT","Mass Maritime"],["MYSU","Mayville St"],["MCD","McDaniel"],["MCK","McKendree"],["MCM","McMurry"],["MCN","McNeese"],["MEM","Memphis"],["MER","Mercer"],["MMA","Merch Marine"],["MERC","Mercyhurst"],["MRMK","Merrimack"],["MU","Methodist"],["MIA","Miami"],["M-OH","Miami OH"],["MICH","Michigan"],["MSU","Michigan St"],["MTU","Michigan Tech"],["MIDB","Middlebury"],["MIDL","Midland"],["MWSU","Midwestern St"],["MILE","Miles"],["MILL","Millersville"],["MILK","Millikin"],["MLSP","Millsaps"],["UMD","Minn Duluth"],["MSUM","Minn Moorhead"],["MNMO","Minn Morris"],["MINN","Minnesota"],["MNST","Minnesota St"],["MINS","Minot St"],["MISE","Misericordia"],["MVSU","Miss Valley St"],["MSST","Mississippi St"],["MIZ","Missouri"],["MOBU","Missouri Bapt"],["MS&T","Missouri S&T"],["MSSU","Missouri So St"],["MOST","Missouri St"],["MIT","MIT"],["MOWE","MO Western"],["MONM","Monmouth"],["MNIL","Monmouth (IL)"],["MONR","Monroe (NY)"],["MONT","Montana"],["MTST","Montana St"],["MCST","Montclair"],["MITE","Monterrey Tech"],["MOR","Moravian"],["MORE","Morehead St"],["MRHO","Morehouse"],["MORG","Morgan St"],["MNGS","Morningside"],["MSJ","Mt St Joseph"],["UMU","Mt Union"],["UMW","MT Western"],["MTSU","MTSU"],["MUHL","Muhlenberg"],["MUR","Murray St"],["MSK","Muskingum"],["NAMU","N American"],["NAU","N Arizona"],["NCC","N Central (IL)"],["UNCO","N Colorado"],["NDSU","N Dakota St"],["NGU","N Greenville"],["NIU","N Illinois"],["NMI","N Michigan"],["UNW","N'Western (MN)"],["NWOK","N'Western (OK)"],["NWST","N'Western St"],["NAVY","Navy"],["NCAT","NC A&T"],["NCCU","NC Central"],["NCSU","NC State"],["NCW","NC Wesleyan"],["NEBK","NE Kearney"],["NESU","NE State"],["NWU","NE Wesleyan"],["NEB","Nebraska"],["NEL","Nelson"],["NEV","Nevada"],["UNE","New England"],["UNH","New Hampshire"],["NHVN","New Haven"],["UNM","New Mexico"],["NMSU","New Mexico St"],["NBRY","Newberry"],["NICH","Nicholls"],["NICC","Nichols"],["NMHU","NM Highlands"],["NORF","Norfolk St"],["UNA","North Alabama"],["UNC","North Carolina"],["UND","North Dakota"],["NPU","North Park"],["UNT","North Texas"],["UNI","Northern Iowa"],["NSU","Northern St"],["NU","Northwestern"],["NWD","Northwood"],["NWCH","Norwich"],["ND","Notre Dame"],["MWMO","NW Missouri St"],["OBE","Oberlin"],["OHIO","Ohio"],["OHDU","Ohio Dominican"],["OHNU","Ohio Northern"],["OSU","Ohio State"],["OWU","Ohio Wesleyan"],["OKBU","OK Baptist"],["OPSU","OK Panhandle"],["OU","Oklahoma"],["OKST","Oklahoma St"],["ODU","Old Dominion"],["MISS","Ole Miss"],["UOO","Olivet"],["ORE","Oregon"],["ORST","Oregon St"],["OTTB","Otterbein"],["OBU","Ouachita Bapt"],["PCLT","Pac Lutheran"],["PACE","Pace"],["PCOR","Pacific (OR)"],["PENN","Penn"],["PSU","Penn State"],["PIKEV","Pikeville"],["PITT","Pitt"],["PTSU","Pittsburg St"],["PLYM","Plymouth St"],["POINT","Point"],["POPI","Pomona Pitzer"],["PRST","Portland St"],["POST","Post"],["PV","Prairie View"],["PRES","Presbyterian"],["PRIN","Princeton"],["PUG","Puget Sound"],["PUR","Purdue"],["QUI","Quincy"],["RMC","Randolph Macon"],["REDL","Redlands"],["RHDT","Reinhardt"],["RPI","Rensselaer"],["URI","Rhode Island"],["RHDS","Rhodes"],["RICE","Rice"],["RICH","Richmond"],["RIP","Ripon"],["RMU","Robert Morris"],["URNY","Rochester (NY)"],["RFU","Rockford"],["RSVT","Roosevelt"],["RHIT","Rose Hulman"],["ROW","Rowan"],["RUTG","Rutgers"],["SAR","S Arkansas"],["SCTS","S Conn St"],["SDST","S Dakota St"],["SIU","S Illinois"],["SNU","S Nazarene"],["SOR","S Oregon"],["SOVA","S Virginia"],["SAC","Sacramento St"],["SHU","Sacred Heart"],["SVSU","Saginaw Valley"],["SANS","Saint Anselm"],["SFPA","Saint Francis"],["SVC","Saint Vincent"],["STX","Saint Xavier"],["SAL","Salisbury"],["SALV","Salve Regina"],["SHSU","Sam Houston"],["SAM","Samford"],["USD","San Diego"],["SDSU","San Diego St"],["SJSU","San Jos\u00e9 St"],["SAV","Savannah St"],["SCST","SC State"],["SDMT","SD Mines"],["SELA","SE Louisiana"],["SEMO","SE Missouri"],["SEOK","SE Oklahoma St"],["SEHI","Seton Hill"],["SEWA","Sewanee"],["SFA","SF Austin"],["SHAW","Shaw"],["SHEN","Shenandoah"],["SHEP","Shepherd"],["SHIP","Shippensburg"],["SHOU","Shorter"],["SHTU","Siena Heights"],["SUCA","Simpson (CA)"],["SCIA","Simpson (IA)"],["SFU","Sioux Falls"],["SRU","Slippery Rock"],["SMU","SMU"],["USA","South Alabama"],["SC","South Carolina"],["SDAK","South Dakota"],["USF","South Florida"],["SEU","Southeastern"],["SOU","Southern"],["USM","Southern Miss"],["SUU","Southern Utah"],["SWU","Southwestern"],["SPR","Springfield"],["STAM","St Ambrose"],["STAU","St Andrews"],["SFIL","St Francis IL"],["SFIN","St Francis IN"],["STJF","St John Fisher"],["STJM","St Johns (MN)"],["USL","St Lawrence"],["STNC","St Norbert"],["OLAF","St Olaf"],["CSS","St Scholastica"],["STMN","St Thomas"],["STAN","Stanford"],["STLG","Sterling"],["STET","Stetson"],["STVS","Stevenson"],["STO","Stonehill"],["STBK","Stony Brook"],["SRST","Sul Ross St"],["NYCL","SUNY Cortland"],["NYER","SUNY Erie"],["NYMT","SUNY Maritime"],["NYMS","SUNY Morrisvle"],["SUSQ","Susquehanna"],["SWBU","SW Baptist"],["SWKS","SW Col (KS)"],["SWMS","SW Minn St"],["SOSU","SW Oklahoma St"],["SYR","Syracuse"],["TAMK","TAMU-Kingsvlle"],["TAR","Tarleton St"],["TLRU","Taylor"],["TCU","TCU"],["TEM","Temple"],["TENN","Tennessee"],["TNST","Tennessee St"],["TNTC","Tennessee Tech"],["TEX","Texas"],["TA&M","Texas A&M"],["TXCL","Texas College"],["TXLU","Texas Lutheran"],["TXSO","Texas Southern"],["TXST","Texas St"],["TTU","Texas Tech"],["CIT","The Citadel"],["THI","Thiel"],["THO","Thomas"],["TMOR","Thomas More"],["TIFF","Tiffin"],["TOL","Toledo"],["TOW","Towson"],["TRNE","Trine"],["TCCT","Trinity (CT)"],["TUTX","Trinity (TX)"],["TBIB","Trinity Bible"],["TROY","Troy"],["TRST","Truman St"],["TUFT","Tufts"],["TULN","Tulane"],["TLSA","Tulsa"],["TUSC","Tusculum"],["TUSK","Tuskegee"],["UFFL","U of Faith"],["UNAM","U of Mexico"],["UAM","UA Monticello"],["UAB","UAB"],["UALB","UAlbany"],["UCD","UC Davis"],["UCF","UCF"],["UCLA","UCLA"],["CONN","UConn"],["ULM","UL Monroe"],["MARY","UMary"],["MASS","UMass"],["MDAR","UMass Dartmth"],["UNCP","UNC Pembroke"],["UNNY","Union"],["UNLV","UNLV"],["UIU","Upper Iowa"],["URSN","Ursinus"],["USC","USC"],["UTM","UT Martin"],["UTPB","UT Prmian Basn"],["UTAH","Utah"],["USU","Utah State"],["UTU","Utah Tech"],["UTEP","UTEP"],["UTIC","Utica"],["UTSA","UTSA"],["UVAW","UVA Wise"],["UWEC","UW-Eau Claire"],["UWL","UW-La Crosse"],["UWO","UW-Oshkosh"],["UWP","UW-Platteville"],["UWRF","UW-River Falls"],["UWSP","UW-Stevens Pt"],["UWST","UW-Stout"],["UWW","UW-Whitewater"],["VUL","VA Lynchburg"],["VALD","Valdosta St"],["VCSU","Valley City St"],["VAL","Valparaiso"],["VAN","Vanderbilt"],["VILL","Villanova"],["UVA","Virginia"],["VSU","Virginia St"],["VT","Virginia Tech"],["VUU","Virginia Union"],["VMI","VMI"],["VTSC","VTSU Castleton"],["WCU","W Carolina"],["WCOL","W Colorado"],["WIU","W Illinois"],["WMU","W Michigan"],["WNE","W New England"],["WVSU","W Virginia St"],["WAB","Wabash"],["WAG","Wagner"],["WAKE","Wake Forest"],["WLDF","Waldorf"],["WLSH","Walsh"],["WRNR","Warner"],["WTBG","Wartburg"],["W&J","Wash & Jeff"],["W&L","Wash and Lee"],["WUMO","Wash St Louis"],["WSBN","Washburn"],["WASH","Washington"],["WSU","Washington St"],["WSMI","Wayne St (MI)"],["WSNE","Wayne St (NE)"],["WAYN","Waynesburg"],["WINT","Webber Int'l"],["WEB","Weber St"],["WSCT","Wesleyan (CT)"],["UWA","West Alabama"],["WCHT","West Chester"],["UWF","West Florida"],["WGA","West Georgia"],["WLU","West Liberty"],["WORU","West Oregon"],["WTAM","West Texas A&M"],["WVU","West Virginia"],["WCSU","WestConn"],["WKU","Western KY"],["WNMU","Western NM"],["WFST","Westfield St"],["WGCU","Westgate Chrst"],["WCMO","Westminster MO"],["WCPA","Westminster PA"],["WCIL","Wheaton (IL)"],["WHLG","Wheeling"],["WHTR","Whittier"],["WHIW","Whitworth"],["WIDE","Widener"],["WILK","Wilkes"],["WLMT","Willamette"],["W&M","William & Mary"],["WJC","William Jewell"],["WPEN","William Penn"],["WLWD","William Woods"],["WLM","Williams"],["WMSN","Williamson"],["WCOH","Wilmington OH"],["WINU","Wingate"],["WNST","Winona St"],["WSSU","Winston-Salem"],["WLC","Wisc Lutheran"],["WIS","Wisconsin"],["WITT","Wittenberg"],["WPU","Wm Paterson"],["WOF","Wofford"],["WOO","Wooster"],["WORC","Worcester St"],["WPI","WPI"],["WVWC","WV Wesleyan"],["WVUT","WVU Tech"],["WYBU","Wylnd Baptist"],["WYO","Wyoming"],["YALE","Yale"],["YSU","Youngstown St"]],
+  ncaab: [["ACU","Abilene Chrstn"],["AF","Air Force"],["AKR","Akron"],["ALA","Alabama"],["AAMU","Alabama A&M"],["ALST","Alabama St"],["ALCN","Alcorn St"],["AMER","American"],["APP","App State"],["UAPB","AR-Pine Bluff"],["ARIZ","Arizona"],["ASU","Arizona St"],["ARK","Arkansas"],["ARST","Arkansas St"],["ARMY","Army"],["AUB","Auburn"],["APSU","Austin Peay"],["CSUB","Bakersfield"],["BALL","Ball State"],["BAY","Baylor"],["BELL","Bellarmine"],["BEL","Belmont"],["BCU","Bethune"],["BING","Binghamton"],["BOIS","Boise St"],["BC","Boston College"],["BU","Boston U"],["BGSU","Bowling Green"],["BRAD","Bradley"],["BRWN","Brown"],["BRY","Bryant"],["BUCK","Bucknell"],["BUF","Buffalo"],["BTLR","Butler"],["BYU","BYU"],["CARK","C Arkansas"],["CCSU","C Connecticut"],["CMU","C Michigan"],["CBU","CA Baptist"],["CP","Cal Poly"],["CAL","California"],["CAM","Campbell"],["CAN","Canisius"],["COFC","Charleston"],["CHSO","Charleston So"],["CLT","Charlotte"],["UTC","Chattanooga"],["CHST","Chicago St"],["CIN","Cincinnati"],["CLEM","Clemson"],["CLE","Cleveland St"],["CCU","Coastal"],["COLG","Colgate"],["COLO","Colorado"],["CSU","Colorado St"],["COLU","Columbia"],["COPP","Coppin St"],["COR","Cornell"],["CREI","Creighton"],["CSUN","CSU Northridge"],["DART","Dartmouth"],["DAV","Davidson"],["DAY","Dayton"],["DEL","Delaware"],["DSU","Delaware St"],["DEN","Denver"],["DEP","DePaul"],["DETM","Detroit Mercy"],["DRKE","Drake"],["DREX","Drexel"],["DUKE","Duke"],["DUQ","Duquesne"],["EIU","E Illinois"],["EKU","E Kentucky"],["EMU","E Michigan"],["EWU","E Washington"],["ECU","East Carolina"],["ETAM","East Texas A&M"],["ELON","Elon"],["ETSU","ETSU"],["EVAN","Evansville"],["FAIR","Fairfield"],["FAU","FAU"],["FDU","FDU"],["FGCU","FGCU"],["FIU","FIU"],["FLA","Florida"],["FAMU","Florida A&M"],["FSU","Florida St"],["FOR","Fordham"],["FRES","Fresno St"],["CSUF","Fullerton"],["FUR","Furman"],["GW","G Washington"],["GASO","GA Southern"],["GWEB","Gardner-Webb"],["GMU","George Mason"],["GTWN","Georgetown"],["UGA","Georgia"],["GAST","Georgia St"],["GT","Georgia Tech"],["GONZ","Gonzaga"],["GRAM","Grambling"],["GCU","Grand Canyon"],["GB","Green Bay"],["HAMP","Hampton"],["HARV","Harvard"],["HAW","Hawai'i"],["HPU","High Point"],["HOF","Hofstra"],["HC","Holy Cross"],["HCU","Hou Christian"],["HOU","Houston"],["HOW","Howard"],["IDHO","Idaho"],["IDST","Idaho St"],["ILL","Illinois"],["ILST","Illinois St"],["UIW","Incarnate Word"],["IU","Indiana"],["INST","Indiana St"],["IONA","Iona"],["IOWA","Iowa"],["ISU","Iowa State"],["IUIN","IU Indy"],["JKST","Jackson St"],["JAX","Jacksonville"],["JMU","James Madison"],["JXST","Jax State"],["KU","Kansas"],["KC","Kansas City"],["KSU","Kansas St"],["KENN","Kennesaw St"],["KENT","Kent State"],["UK","Kentucky"],["LAS","La Salle"],["LAF","Lafayette"],["LAM","Lamar"],["LEM","Le Moyne"],["LEH","Lehigh"],["LIB","Liberty"],["LIN","Lindenwood"],["LIP","Lipscomb"],["LR","Little Rock"],["LMU","LMU"],["LBSU","Long Beach St"],["LIU","Long Island"],["LONG","Longwood"],["UL","Louisiana"],["LT","Louisiana Tech"],["LOU","Louisville"],["LUC","Loyola Chicago"],["L-MD","Loyola MD"],["LSU","LSU"],["NOLA","LSU N Orleans"],["ME","Maine"],["MAN","Manhattan"],["MRST","Marist"],["MARQ","Marquette"],["MRSH","Marshall"],["MD","Maryland"],["MCN","McNeese"],["UMES","MD Eastern"],["MEM","Memphis"],["MER","Mercer"],["MERC","Mercyhurst"],["MRMK","Merrimack"],["MIA","Miami"],["M-OH","Miami OH"],["MICH","Michigan"],["MSU","Michigan St"],["MILW","Milwaukee"],["MINN","Minnesota"],["MVSU","Miss Valley St"],["MSST","Mississippi St"],["MIZ","Missouri"],["MOST","Missouri St"],["MONM","Monmouth"],["MONT","Montana"],["MTST","Montana St"],["MORE","Morehead St"],["MORG","Morgan St"],["MSM","Mount St Marys"],["MTSU","MTSU"],["MUR","Murray St"],["NAU","N Arizona"],["UNCO","N Colorado"],["NDSU","N Dakota St"],["NIU","N Illinois"],["NKU","N Kentucky"],["NWST","N'Western St"],["NAVY","Navy"],["NCAT","NC A&T"],["NCCU","NC Central"],["NCSU","NC State"],["NEB","Nebraska"],["NEV","Nevada"],["UNH","New Hampshire"],["NHVN","New Haven"],["UNM","New Mexico"],["NMSU","New Mexico St"],["NIA","Niagara"],["NICH","Nicholls"],["NJIT","NJIT"],["NORF","Norfolk St"],["UNA","North Alabama"],["UNC","North Carolina"],["UND","North Dakota"],["UNF","North Florida"],["UNT","North Texas"],["NE","Northeastern"],["UNI","Northern Iowa"],["NU","Northwestern"],["ND","Notre Dame"],["OAK","Oakland"],["OHIO","Ohio"],["OSU","Ohio State"],["OU","Oklahoma"],["OKST","Oklahoma St"],["ODU","Old Dominion"],["MISS","Ole Miss"],["OMA","Omaha"],["ORU","Oral Roberts"],["ORE","Oregon"],["ORST","Oregon St"],["PAC","Pacific"],["PENN","Penn"],["PSU","Penn State"],["PEPP","Pepperdine"],["PITT","Pitt"],["PORT","Portland"],["PRST","Portland St"],["PV","Prairie View"],["PRES","Presbyterian"],["PRIN","Princeton"],["PROV","Providence"],["PUR","Purdue"],["PFW","Purdue FW"],["QUC","Queens"],["QUIN","Quinnipiac"],["RAD","Radford"],["URI","Rhode Island"],["RICE","Rice"],["RICH","Richmond"],["RID","Rider"],["RMU","Robert Morris"],["RUTG","Rutgers"],["SDST","S Dakota St"],["SIU","S Illinois"],["USI","S Indiana"],["SAC","Sacramento St"],["SHU","Sacred Heart"],["JOES","Saint Joseph's"],["SLU","Saint Louis"],["SMC","Saint Mary's"],["SPU","Saint Peter's"],["SHSU","Sam Houston"],["SAM","Samford"],["USD","San Diego"],["SDSU","San Diego St"],["SF","San Francisco"],["SJSU","San Jos\u00e9 St"],["UCSB","Santa Barbara"],["SCU","Santa Clara"],["SCST","SC State"],["UPST","SC Upstate"],["SELA","SE Louisiana"],["SEMO","SE Missouri"],["SEA","Seattle U"],["HALL","Seton Hall"],["SFA","SF Austin"],["SIE","Siena"],["SIUE","SIUE"],["SMU","SMU"],["USA","South Alabama"],["SC","South Carolina"],["SDAK","South Dakota"],["USF","South Florida"],["SOU","Southern"],["USM","Southern Miss"],["SUU","Southern Utah"],["SBU","St Bonaventure"],["SJU","St John's"],["STMN","St Thomas"],["STAN","Stanford"],["STET","Stetson"],["STO","Stonehill"],["STBK","Stony Brook"],["SYR","Syracuse"],["TAR","Tarleton St"],["TCU","TCU"],["TEM","Temple"],["TENN","Tennessee"],["TNST","Tennessee St"],["TNTC","Tennessee Tech"],["TEX","Texas"],["TA&M","Texas A&M"],["AMCC","Texas A&M-CC"],["TXSO","Texas Southern"],["TXST","Texas St"],["TTU","Texas Tech"],["CIT","The Citadel"],["TOL","Toledo"],["TOW","Towson"],["TROY","Troy"],["TULN","Tulane"],["TLSA","Tulsa"],["UAB","UAB"],["UALB","UAlbany"],["UCD","UC Davis"],["UCI","UC Irvine"],["UCR","UC Riverside"],["UCSD","UC San Diego"],["UCF","UCF"],["UCLA","UCLA"],["CONN","UConn"],["UIC","UIC"],["ULM","UL Monroe"],["MASS","UMass"],["UML","UMass Lowell"],["UMBC","UMBC"],["UNCA","UNC Asheville"],["UNCG","UNC Greensboro"],["UNCW","UNC Wilmington"],["UNLV","UNLV"],["USC","USC"],["UTA","UT Arlington"],["UTM","UT Martin"],["RGV","UT Rio Grande"],["UTAH","Utah"],["USU","Utah State"],["UTU","Utah Tech"],["UVU","Utah Valley"],["UTEP","UTEP"],["UTSA","UTSA"],["VAL","Valparaiso"],["VAN","Vanderbilt"],["VCU","VCU"],["UVM","Vermont"],["VILL","Villanova"],["UVA","Virginia"],["VT","Virginia Tech"],["VMI","VMI"],["WCU","W Carolina"],["WIU","W Illinois"],["WMU","W Michigan"],["WAG","Wagner"],["WAKE","Wake Forest"],["WASH","Washington"],["WSU","Washington St"],["WEB","Weber St"],["UWF","West Florida"],["WGA","West Georgia"],["WVU","West Virginia"],["WKU","Western KY"],["WICH","Wichita St"],["W&M","William & Mary"],["WIN","Winthrop"],["WIS","Wisconsin"],["WOF","Wofford"],["WRST","Wright St"],["WYO","Wyoming"],["XAV","Xavier"],["YALE","Yale"],["YSU","Youngstown St"]],
+  nhl: [["COL","Avalanche"],["CHI","Blackhawks"],["CBJ","Blue Jackets"],["STL","Blues"],["BOS","Bruins"],["MTL","Canadiens"],["VAN","Canucks"],["WSH","Capitals"],["NJ","Devils"],["ANA","Ducks"],["CGY","Flames"],["PHI","Flyers"],["VGK","Golden Knights"],["CAR","Hurricanes"],["NYI","Islanders"],["WPG","Jets"],["LA","Kings"],["SEA","Kraken"],["TB","Lightning"],["UTAH","Mammoth"],["TOR","Maple Leafs"],["EDM","Oilers"],["FLA","Panthers"],["PIT","Penguins"],["NSH","Predators"],["NYR","Rangers"],["DET","Red Wings"],["BUF","Sabres"],["OTT","Senators"],["SJ","Sharks"],["DAL","Stars"],["MIN","Wild"]],
+  mls: [["ATL","Atlanta"],["ATX","Austin"],["MTL","CF Montr\u00e9al"],["CLT","Charlotte"],["CHI","Chicago"],["CIN","Cincinnati"],["COL","Colorado"],["CLB","Columbus"],["DC","D.C. United"],["DAL","Dallas"],["HOU","Houston"],["SKC","Kansas City"],["LA","LA Galaxy"],["LAFC","LAFC"],["MIA","Miami"],["MIN","Minnesota"],["NSH","Nashville"],["NE","New England"],["NYC","NYCFC"],["ORL","Orlando"],["PHI","Philadelphia"],["POR","Portland"],["RBNY","Red Bull NY"],["RSL","Salt Lake"],["SD","San Diego"],["SJ","San Jose"],["SEA","Seattle"],["STL","St. Louis"],["TOR","Toronto"],["VAN","Vancouver"]]
+};
+
+let teamPick = new Set();
+let clockPick = [];
+let leagueOn = new Set();
+let leagueRest = new Set();
+let teamTab = 'nfl';
+let hydrating = false;
+let saveTimer = null;
+const LEAGUE_TABS = [['nfl','NFL'],['nba','NBA'],['mlb','MLB'],['nhl','NHL'],['mls','MLS'],['ncaaf','NCAAF'],['ncaab','NCAAB']];
+
+let settings = { ...defaultSettings };
+let newsItems = [];
+let sportsItems = [];
+let stockItems = [];
+let weatherData = null;
+let rotationTimers = {};
+
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem('newsDashboardSettings');
+    if (saved) settings = { ...defaultSettings, ...JSON.parse(saved) };
+  } catch (e) {}
+  ensureWidgets();
+  if ((settings.leagueCatalogVersion || 0) < 3) {
+    settings.sportsLeagues = settings.sportsLeagues || [];
+    settings.restLeagues = Array.isArray(settings.restLeagues) ? settings.restLeagues : ['nfl', 'nba', 'mlb', 'ncaaf', 'ncaab'];
+    for (const lg of ['ncaaf', 'ncaab', 'nhl', 'mls']) {
+      if (!settings.sportsLeagues.includes(lg)) settings.sportsLeagues.push(lg);
+      if (!settings.restLeagues.includes(lg)) settings.restLeagues.push(lg);
+    }
+    settings.leagueCatalogVersion = 3;
+    saveSettings();
+  }
+  if (!Array.isArray(settings.restLeagues)) {
+    const all = ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'];
+    settings.restLeagues = settings.includeRestOfLeague === false ? [] : all;
+  }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem('newsDashboardSettings', JSON.stringify(settings));
+  } catch (e) {
+    console.warn('Could not save settings (sandboxed environment):', e.message);
+  }
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  if (typeof renderClocks === 'function') renderClocks();
+}
+
+function rssImage(item) {
+  const nodes = item.getElementsByTagName('*');
+  for (const el of nodes) {
+    const name = (el.localName || el.nodeName || '').toLowerCase();
+    if (!/content|thumbnail|enclosure/.test(name)) continue;
+    const url = el.getAttribute('url') || el.getAttribute('href') || '';
+    if (/^https?:/i.test(url) && !/\.(mp3|mp4|m4a)(\?|$)/i.test(url)) return url;
+  }
+  const blob = [...nodes].map(el => el.textContent || '').join('\n');
+  const match = blob.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match ? match[1] : '';
+}
+
+async function fetchRSS(url) {
+  // Skip known-bad Google News RSS feeds
+  if (url.includes('news.google.com')) {
+    return [];
+  }
+
+  const proxies = [PROXY, 'https://corsproxy.io/?'];
+  for (const proxy of proxies) {
+    try {
+      const target = proxy.endsWith('?') ? proxy + encodeURIComponent(url) : proxy + url;
+      const res = await fetch(target, { credentials: 'omit' });
+      if (!res.ok) {
+        if (res.status === 503) continue;
+        throw new Error(res.status);
+      }
+      const text = await res.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'text/xml');
+      const items = [...xml.querySelectorAll('item')].slice(0, 12).map(item => {
+        const image = rssImage(item);
+        const desc = item.querySelector('description')?.textContent || '';
+        const host = (() => { try { return new URL(url).hostname; } catch (e) { return url; } })();
+        const source = host.includes('fox') ? 'Fox' : host.includes('cnn') ? 'CNN' : host.includes('reuters') ? 'Reuters' : host.includes('bbc') ? 'BBC' : host.includes('latimes') ? 'LA Times' : host.includes('nytimes') ? 'NY Times' : host.includes('axios') ? 'Axios' : host.includes('npr') ? 'NPR' : host.includes('timesofisrael') ? 'Times of Israel' : 'News';
+        return {
+          title: item.querySelector('title')?.textContent || '',
+          link: item.querySelector('link')?.textContent || '',
+          pubDate: item.querySelector('pubDate')?.textContent || '',
+          image,
+          summary: desc.replace(/<[^>]*>/g, '').slice(0, 140).trim(),
+          source
+        };
+      });
+      if (items.length) return items;
+    } catch (e) {}
+  }
+  return [];
+}
+
+async function loadNews(quiet) {
+  const content = document.getElementById('news-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading news…</div>';
+  const feeds = [];
+  settings.outlets.forEach(outlet => {
+    settings.categories.forEach(cat => {
+      const feed = outletFeeds[outlet]?.[cat] || outletFeeds[outlet]?.latest;
+      if (feed && !feeds.includes(feed)) feeds.push(feed);
+    });
+  });
+  const results = await Promise.all(feeds.map(fetchRSS));
+  newsItems = results.flat().filter(i => i.title).slice(0, 40);
+  // Filter by max age
+  const maxAgeMs = (settings.maxNewsAgeHours || 24) * 60 * 60 * 1000;
+  const now = Date.now();
+  newsItems = newsItems.filter(i => {
+    if (!i.pubDate) return true;
+    const t = new Date(i.pubDate).getTime();
+    return !isNaN(t) && (now - t) < maxAgeMs;
+  });
+  // simple dedupe by title
+  const seen = new Set();
+  newsItems = newsItems.filter(i => {
+    if (seen.has(i.title)) return false;
+    seen.add(i.title);
+    return true;
+  });
+  renderNews();
+}
+
+const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, stocks: 0, tech: 0, clocks: 0 };
+
+function dotsHtml(total, visible, start) {
+  if (total <= visible) return '';
+  const pages = Math.max(1, Math.ceil(total / visible));
+  const current = Math.floor(start / visible) % pages;
+  const dots = Array.from({ length: pages }, (_, i) =>
+    `<span class="dot${i === current ? ' on' : ''}"></span>`).join('');
+  return `<div class="rot-dots">${dots}</div>`;
+}
+
+function howMany(el, itemH, key) {
+  const h = el.clientHeight;
+  if (h < 40) return 0;
+  const usable = Math.max(itemH, h - 22);
+  const base = Math.max(1, Math.floor(usable / itemH));
+  return Math.max(1, base - (fitNudge[key] || 0));
+}
+
+function tightenIfOverflow(el, key, render) {
+  const scroller = el.querySelector('.items-scroller');
+  if (!scroller) return;
+  if (scroller.scrollHeight > scroller.clientHeight + 6 && (fitNudge[key] || 0) < 8) {
+    fitNudge[key] = (fitNudge[key] || 0) + 1;
+    render();
+  }
+}
+
+function renderNews() {
+  const el = document.getElementById('news-content');
+  if (!newsItems.length) {
+    el.innerHTML = '<div class="error">No news available. Check settings or try later.</div>';
+    return;
+  }
+  const itemH = 132;
+  const visible = howMany(el, itemH, 'news');
+  if (!visible) { requestAnimationFrame(renderNews); return; }
+  const start = window.newsStart || 0;
+  const slice = newsItems.slice(start, start + visible);
+  if (slice.length < visible && newsItems.length > visible) {
+    slice.push(...newsItems.slice(0, visible - slice.length));
+  }
+  const outletLogos = {
+    Fox: 'https://www.google.com/s2/favicons?domain=foxnews.com&sz=32',
+    CNN: 'https://www.google.com/s2/favicons?domain=cnn.com&sz=32',
+    Reuters: 'https://www.google.com/s2/favicons?domain=reuters.com&sz=32'
+  };
+  el.innerHTML = `
+    <div class="items-scroller slide-container" style="transition: transform 0.45s ease, opacity 0.3s ease;">
+      ${slice.map(item => `
+        <div class="item news-item">
+          ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
+          <div class="news-headline"><img src="${outletLogos[item.source] || ''}" alt="" onerror="this.style.display='none'"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+          ${item.summary ? `<div class="meta" style="margin-top:0.2rem;opacity:0.85;">${item.summary}${item.summary.length >= 140 ? '…' : ''}</div>` : ''}
+          <div class="meta">${item.source} · ${item.pubDate ? new Date(item.pubDate).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${dotsHtml(newsItems.length, visible, start)}
+  `;
+  tightenIfOverflow(el, 'news', renderNews);
+  clearInterval(rotationTimers.news);
+  if (newsItems.length > visible) {
+    rotationTimers.news = setInterval(() => {
+      const container = el.querySelector('.slide-container');
+      if (container) {
+        container.style.transform = 'translateX(-8px)';
+        container.style.opacity = '0.4';
+      }
+      setTimeout(() => {
+        window.newsStart = ((window.newsStart || 0) + Math.max(1, Math.floor(visible / 2))) % newsItems.length;
+        renderNews();
+      }, 220);
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+let localNewsItems = [];
+let intlNewsItems = [];
+
+async function loadLocalNews(quiet) {
+  const content = document.getElementById('local-news-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading local news…</div>';
+  const loc = (settings.localNewsLocation || settings.weatherLocation || 'Los Angeles').toLowerCase();
+  const cityFeeds = [
+    [['los angeles', 'la'], 'https://www.latimes.com/local/rss2.0.xml'],
+    [['new york', 'nyc', 'brooklyn'], 'https://rss.nytimes.com/services/xml/rss/nyt/NYRegion.xml'],
+    [['chicago'], 'https://www.chicagotribune.com/arcio/rss/category/news/'],
+    [['san francisco', 'sf', 'bay area'], 'https://www.sfchronicle.com/rss/feed/Local-News-429.php'],
+    [['seattle'], 'https://www.seattletimes.com/seattle-news/feed/'],
+    [['boston'], 'https://www.bostonglobe.com/rss/metro'],
+    [['miami'], 'https://www.miamiherald.com/news/local/index.rss'],
+    [['houston'], 'https://www.houstonchronicle.com/rss/feed/News-270.php'],
+    [['washington', 'dc'], 'https://feeds.washingtonpost.com/rss/local']
+  ];
+  let items = [];
+  for (const [keys, feed] of cityFeeds) {
+    if (keys.some(key => loc.includes(key))) {
+      items = await fetchRSS(feed);
+      if (items.length) break;
+    }
+  }
+  if (!items.length) items = await fetchRSS('https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml');
+  localNewsItems = items.slice(0, 12);
+  const maxAgeMs = (settings.maxNewsAgeHours || 24) * 60 * 60 * 1000;
+  const now = Date.now();
+  localNewsItems = localNewsItems.filter(i => {
+    if (!i.pubDate) return true;
+    const t = new Date(i.pubDate).getTime();
+    return !isNaN(t) && (now - t) < maxAgeMs;
+  });
+  renderLocalNews();
+}
+
+function renderLocalNews() {
+  const el = document.getElementById('local-news-content');
+  if (!localNewsItems.length) {
+    el.innerHTML = '<div class="error">No local news available.</div>';
+    return;
+  }
+  const itemH = 112;
+  const visible = howMany(el, itemH, 'local');
+  if (!visible) { requestAnimationFrame(renderLocalNews); return; }
+  const start = window.localStart || 0;
+  const slice = localNewsItems.slice(start, start + visible);
+  el.innerHTML = `<div class="items-scroller">${slice.map(item => `
+    <div class="item news-item">
+      ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
+      <div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+        ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
+        <div class="meta">${item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</div>
+    </div>
+  `).join('')}</div>${dotsHtml(localNewsItems.length, visible, start)}`;
+  tightenIfOverflow(el, 'local', renderLocalNews);
+  clearInterval(rotationTimers.local);
+  if (localNewsItems.length > visible) {
+    rotationTimers.local = setInterval(() => {
+      window.localStart = ((window.localStart || 0) + 1) % localNewsItems.length;
+      renderLocalNews();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+async function loadIntlNews(quiet) {
+  const content = document.getElementById('intl-news-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading international news…</div>';
+  const country = (settings.intlCountry || 'US').toUpperCase();
+  if (country === 'ALL') {
+    // Aggregate a few major international sources
+    const urls = [
+      'https://feeds.bbci.co.uk/news/world/rss.xml',
+      'https://www.timesofisrael.com/feed/',
+      'https://rss.dw.com/rdf/rss-en-all'
+    ];
+    const results = await Promise.all(urls.map(fetchRSS));
+    intlNewsItems = results.flat().filter(i => i.title).slice(0, 20);
+  } else {
+    const countryFeeds = {
+      US: 'https://feeds.npr.org/1001/rss.xml',
+      GB: 'https://feeds.bbci.co.uk/news/rss.xml',
+      CA: 'https://www.cbc.ca/cmlink/rss-topstories',
+      AU: 'https://www.abc.net.au/news/feed/51120/rss.xml',
+      DE: 'https://rss.dw.com/rdf/rss-en-all',
+      FR: 'https://www.france24.com/en/rss',
+      IL: 'https://www.timesofisrael.com/feed/',
+      JP: 'https://www3.nhk.or.jp/rss/news/cat0.xml',
+      IN: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+      BR: 'https://feeds.bbci.co.uk/news/world/latin_america/rss.xml',
+      MX: 'https://feeds.bbci.co.uk/news/world/latin_america/rss.xml'
+    };
+    let url = countryFeeds[country] || 'https://feeds.bbci.co.uk/news/world/rss.xml';
+    intlNewsItems = await fetchRSS(url);
+  }
+  const maxAgeMs = (settings.maxNewsAgeHours || 24) * 60 * 60 * 1000;
+  const now = Date.now();
+  intlNewsItems = intlNewsItems.filter(i => {
+    if (!i.pubDate) return true;
+    const t = new Date(i.pubDate).getTime();
+    return !isNaN(t) && (now - t) < maxAgeMs;
+  }).slice(0, 15);
+  renderIntlNews();
+}
+
+function renderIntlNews() {
+  const el = document.getElementById('intl-news-content');
+  if (!intlNewsItems.length) {
+    el.innerHTML = '<div class="error">No international news available.</div>';
+    return;
+  }
+  const countryLabel = settings.intlCountry === 'all' ? 'All Countries' : (document.querySelector(`#intl-country option[value="${settings.intlCountry}"]`)?.textContent || settings.intlCountry);
+  const itemH = 112;
+  const visible = howMany(el, itemH, 'intl');
+  if (!visible) { requestAnimationFrame(renderIntlNews); return; }
+  const start = window.intlStart || 0;
+  const slice = intlNewsItems.slice(start, start + visible);
+  el.innerHTML = `<div class="items-scroller"><div class="meta" style="margin-bottom:0.4rem;font-weight:600;">${countryLabel}</div>${slice.map(item => `
+    <div class="item news-item">
+      ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
+      <div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+        ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
+        <div class="meta">${item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</div>
+    </div>
+  `).join('')}</div>${dotsHtml(intlNewsItems.length, visible, start)}`;
+  tightenIfOverflow(el, 'intl', renderIntlNews);
+  clearInterval(rotationTimers.intl);
+  if (intlNewsItems.length > visible) {
+    rotationTimers.intl = setInterval(() => {
+      window.intlStart = ((window.intlStart || 0) + 1) % intlNewsItems.length;
+      renderIntlNews();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+async function loadSports(quiet) {
+  const content = document.getElementById('sports-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading scores…</div>';
+  const promises = settings.sportsLeagues.map(async lg => {
+    const info = leagueMap[lg];
+    if (!info) return [];
+    try {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/${info.sport}/${info.league}/scoreboard`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      return (data.events || []).map(ev => mapSportsEvent(lg, info, ev));
+    } catch (e) {
+      console.warn('Sports fetch failed', lg, e);
+      return [];
+    }
+  });
+  const results = await Promise.all(promises);
+  let games = results.flat();
+  const extras = await Promise.all((settings.favoriteTeams || []).map(fav => nextFavoriteGame(fav, games)));
+  extras.filter(Boolean).forEach(g => {
+    const dup = games.some(x => x.leagueKey === g.leagueKey && x.away === g.away && x.home === g.home && x.date === g.date);
+    if (!dup) games.push(g);
+  });
+  sportsItems = orderSports(games);
+  if (!quiet) window.sportsStart = 0;
+  renderSports();
+}
+
+function teamLogo(team) {
+  return team?.logo || team?.logos?.[0]?.href || '';
+}
+
+function scheduleLabel(dateStr, detail) {
+  if (detail && /\d/.test(detail)) return detail;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return detail || 'Scheduled';
+  return d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function mapSportsEvent(lg, info, ev) {
+  const comp = ev.competitions?.[0] || {};
+  const comps = comp.competitors || [];
+  const home = comps.find(c => c.homeAway === 'home') || comps[1] || {};
+  const away = comps.find(c => c.homeAway === 'away') || comps[0] || {};
+  const statusType = ev.status?.type || comp.status?.type || {};
+  const isLive = statusType.state === 'in';
+  const isUpcoming = statusType.state === 'pre';
+  const period = ev.status?.period || comp.status?.period || '';
+  const clock = ev.status?.displayClock || comp.status?.displayClock || '';
+  const detail = statusType.shortDetail || statusType.detail || statusType.description || '';
+  const awayAbbr = away?.team?.abbreviation || '';
+  const homeAbbr = home?.team?.abbreviation || '';
+  const awayName = away?.team?.displayName || away?.team?.shortDisplayName || '';
+  const homeName = home?.team?.displayName || home?.team?.shortDisplayName || '';
+  const date = ev.date || comp.date || '';
+  return {
+    league: info.name,
+    leagueKey: lg,
+    away: awayAbbr || away?.team?.shortDisplayName || 'Away',
+    home: homeAbbr || home?.team?.shortDisplayName || 'Home',
+    awayName,
+    homeName,
+    awayScore: away?.score ?? (isUpcoming ? '' : '-'),
+    homeScore: home?.score ?? (isUpcoming ? '' : '-'),
+    awayLogo: teamLogo(away?.team),
+    homeLogo: teamLogo(home?.team),
+    status: detail,
+    isLive,
+    isUpcoming,
+    state: statusType.state || '',
+    period,
+    clock,
+    date,
+    favorite: isFavoriteTeam(lg, awayAbbr, homeAbbr, awayName, homeName),
+    statusDetail: isLive ? (clock ? `Q${period} ${clock}` : detail) : (isUpcoming ? scheduleLabel(date, detail) : detail)
+  };
+}
+
+function gameHasFavorite(game, fav) {
+  if (!fav || game.leagueKey !== fav.league) return false;
+  const abbr = normAbbr(fav.league, fav.abbr);
+  const away = normAbbr(game.leagueKey, game.away);
+  const home = normAbbr(game.leagueKey, game.home);
+  if (abbr && (abbr === away || abbr === home)) return true;
+  const name = (fav.name || '').toLowerCase();
+  if (!name) return false;
+  return (game.awayName || '').toLowerCase().includes(name) || (game.homeName || '').toLowerCase().includes(name);
+}
+
+async function nextFavoriteGame(fav, games) {
+  const mine = games.filter(g => gameHasFavorite(g, fav));
+  if (mine.some(g => g.isLive || g.state === 'pre')) return null;
+  const info = leagueMap[fav.league];
+  if (!info || !fav.abbr) return null;
+  try {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${info.sport}/${info.league}/teams/${encodeURIComponent(fav.abbr.toLowerCase())}/schedule`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const now = Date.now();
+    const upcoming = (data.events || []).map(ev => mapSportsEvent(fav.league, info, ev)).filter(g => {
+      if (g.state === 'post') return false;
+      if (g.state === 'pre' || g.state === 'in') return true;
+      const t = Date.parse(g.date);
+      return !Number.isNaN(t) && t > now;
+    }).sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const next = upcoming[0];
+    if (!next) return null;
+    next.favorite = true;
+    next.isUpcoming = next.state !== 'in';
+    if (!next.isLive) next.statusDetail = scheduleLabel(next.date, next.status);
+    return next;
+  } catch (e) {
+    console.warn('Next game failed', fav.abbr, e);
+    return null;
+  }
+}
+
+function normAbbr(league, abbr) {
+  const a = (abbr || '').toUpperCase();
+  const alias = {
+    nfl: { WSH: 'WAS', LA: 'LAR', JAC: 'JAX' },
+    nba: { GS: 'GSW', NY: 'NYK', SA: 'SAS', NO: 'NOP', UTAH: 'UTA', PHO: 'PHX', BK: 'BKN', WSH: 'WAS' },
+    mlb: { OAK: 'ATH', AZ: 'ARI', CHW: 'CWS', SFG: 'SF', TBR: 'TB', KCR: 'KC', SDP: 'SD', WAS: 'WSH', WSN: 'WSH' }
+  };
+  return (alias[league] && alias[league][a]) || a;
+}
+
+function isFavoriteTeam(league, away, home, awayName, homeName) {
+  const favs = settings.favoriteTeams || [];
+  if (!favs.length) return false;
+  const a = normAbbr(league, away);
+  const h = normAbbr(league, home);
+  const names = [awayName, homeName].map(n => (n || '').toLowerCase());
+  return favs.some(t => {
+    if (t.league !== league) return false;
+    if (t.abbr === a || t.abbr === h) return true;
+    const name = (t.name || '').toLowerCase();
+    return name && names.some(n => n.includes(name));
+  });
+}
+
+function orderSports(games) {
+  const favorites = games.filter(g => g.favorite).sort((a, b) => {
+    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
+    if (a.isUpcoming !== b.isUpcoming) return a.isUpcoming ? -1 : 1;
+    return (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0);
+  });
+  const restOn = (g) => (settings.restLeagues || []).includes(g.leagueKey) && (settings.sportsLeagues || []).includes(g.leagueKey);
+  const rest = games.filter(g => !g.favorite && restOn(g)).sort((a, b) => (a.isLive === b.isLive ? 0 : a.isLive ? -1 : 1));
+  return favorites.concat(rest);
+}
+
+function sportsPages(visible) {
+  const favs = sportsItems.filter(g => g.favorite);
+  const rest = sportsItems.filter(g => !g.favorite);
+  if (!favs.length) {
+    const pages = [];
+    for (let i = 0; i < rest.length; i += visible) pages.push(rest.slice(i, i + visible));
+    return pages.length ? pages : [[]];
+  }
+  if (favs.length >= visible) {
+    const pages = [];
+    for (let i = 0; i < favs.length; i += visible) pages.push(favs.slice(i, i + visible));
+    for (let i = 0; i < rest.length; i += visible) pages.push(rest.slice(i, i + visible));
+    return pages;
+  }
+  const slots = visible - favs.length;
+  if (!rest.length) return [favs];
+  const pages = [];
+  for (let i = 0; i < rest.length; i += slots) pages.push(favs.concat(rest.slice(i, i + slots)));
+  return pages;
+}
+
+function renderSports() {
+  const el = document.getElementById('sports-content');
+  if (!sportsItems.length) {
+    el.innerHTML = `<div class="error">${(settings.favoriteTeams || []).length ? 'No games for your favorite teams right now.' : 'No games available right now.'}</div>`;
+    return;
+  }
+  const itemH = 58;
+  const visible = howMany(el, itemH, 'sports');
+  if (!visible) { requestAnimationFrame(renderSports); return; }
+  const pages = sportsPages(visible);
+  const page = (window.sportsStart || 0) % pages.length;
+  const slice = pages[page];
+  el.innerHTML = `<div class="items-scroller">${slice.map(g => `
+    <div class="item" style="display:flex;align-items:center;gap:0.4rem;${g.favorite ? 'border-left:3px solid #f59e0b;padding-left:0.4rem;' : ''} ${g.isLive ? 'background:rgba(16,185,129,0.15);border-radius:6px;padding:0.4rem;' : ''}">
+      ${g.awayLogo ? `<img src="${g.awayLogo}" style="width:20px;height:20px;" onerror="this.style.display='none'">` : ''}
+      <span class="score">${g.favorite ? '★ ' : ''}${g.away}${g.isUpcoming && g.awayScore === '' ? '' : ` <strong>${g.awayScore}</strong>`} – ${g.isUpcoming && g.homeScore === '' ? '' : `<strong>${g.homeScore}</strong> `}${g.home}</span>
+      ${g.homeLogo ? `<img src="${g.homeLogo}" style="width:20px;height:20px;" onerror="this.style.display='none'">` : ''}
+      <div class="meta" style="margin-left:auto;${g.isLive ? 'color:#10b981;font-weight:600;' : ''}">
+        ${g.isLive ? '🔴 LIVE · ' : (g.isUpcoming ? 'NEXT · ' : '')}${g.league}<br>${g.statusDetail || g.status}
+      </div>
+    </div>
+  `).join('')}</div>${dotsHtml(pages.length, 1, page)}`;
+  tightenIfOverflow(el, 'sports', renderSports);
+  clearInterval(rotationTimers.sports);
+  if (pages.length > 1) {
+    rotationTimers.sports = setInterval(() => {
+      const el = document.getElementById('sports-content');
+      el.classList.add('fading');
+      setTimeout(() => {
+        window.sportsStart = ((window.sportsStart || 0) + 1) % pages.length;
+        renderSports();
+        el.classList.remove('fading');
+      }, 200);
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+async function loadWeather(quiet) {
+  const content = document.getElementById('weather-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading weather…</div>';
+  try {
+    let latitude = 34.0522, longitude = -118.2437, name = 'Los Angeles', country = 'US';
+    const loc = (settings.weatherLocation || '').toLowerCase();
+    // Fast path for default LA
+    if (loc.includes('los angeles') || loc === 'la' || loc === '') {
+      // use hardcoded
+    } else {
+      // Try geocode with short timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(settings.weatherLocation)}&count=1`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (geoRes.ok) {
+          const geo = await geoRes.json();
+          if (geo.results?.length) {
+            ({ latitude, longitude, name, country } = geo.results[0]);
+          }
+        }
+      } catch (e) {
+        console.warn('Geocode failed, using LA fallback');
+      }
+    }
+    const controller2 = new AbortController();
+    const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=5&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: controller2.signal });
+    clearTimeout(timeoutId2);
+    if (!wRes.ok) throw new Error('Weather API error ' + wRes.status);
+    const w = await wRes.json();
+    const [aqi, alerts] = await Promise.all([
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`https://api.weather.gov/alerts/active?point=${latitude.toFixed(4)},${longitude.toFixed(4)}`, { headers: { Accept: 'application/geo+json' } }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+    weatherData = {
+      ...w,
+      location: `${name}, ${country}`,
+      aqi: aqi?.current?.us_aqi,
+      alerts: (alerts?.features || []).slice(0, 3).map(f => ({
+        event: f.properties?.event || 'Alert',
+        severity: f.properties?.severity || '',
+        headline: f.properties?.headline || f.properties?.event || ''
+      }))
+    };
+    renderWeather();
+  } catch (e) {
+    console.warn('Weather load error:', e);
+    content.innerHTML = `<div class="error">Weather slow/unavailable (${e.message || 'timeout'}). Showing fallback.</div>`;
+    weatherData = {
+      current: { temperature_2m: 72, relative_humidity_2m: 50, weather_code: 1, wind_speed_10m: 5 },
+      hourly: { time: [], temperature_2m: [], weather_code: [] },
+      daily: { time: ['2026-11-16','2026-11-17','2026-11-18','2026-11-19','2026-11-20'], temperature_2m_max: [75,74,73,72,71], temperature_2m_min: [58,57,56,55,54], weather_code: [1,2,1,0,1], sunrise: ['2026-11-16T06:28'], sunset: ['2026-11-16T16:52'] },
+      location: 'Los Angeles, US',
+      aqi: null,
+      alerts: [],
+      fallback: true
+    };
+    renderWeather();
+  }
+}
+
+function sunTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function weatherCodeToText(code) {
+  const map = { 0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Fog',51:'Drizzle',53:'Drizzle',55:'Drizzle',61:'Rain',63:'Rain',65:'Heavy rain',71:'Snow',73:'Snow',75:'Heavy snow',80:'Showers',81:'Showers',82:'Heavy showers',95:'Thunderstorm',96:'Thunderstorm',99:'Thunderstorm' };
+  return map[code] || 'Unknown';
+}
+
+function weatherCodeToIcon(code) {
+  if (code === 0) return '☀️';
+  if (code <= 3) return '⛅';
+  if (code <= 48) return '🌫️';
+  if (code <= 57) return '🌦️';
+  if (code <= 67) return '🌧️';
+  if (code <= 77) return '❄️';
+  if (code <= 82) return '🌧️';
+  return '⛈️';
+}
+
+function moonInfo(date, apiPhase) {
+  let frac = Number(apiPhase);
+  if (!Number.isFinite(frac)) {
+    const known = Date.UTC(2000, 0, 6, 18, 14);
+    const days = (date.getTime() - known) / 86400000;
+    const age = ((days % 29.530588853) + 29.530588853) % 29.530588853;
+    frac = age / 29.530588853;
+  }
+  frac = ((frac % 1) + 1) % 1;
+  const bands = [
+    [0.03, 'New Moon', '🌑'],
+    [0.22, 'Waxing Crescent', '🌒'],
+    [0.28, 'First Quarter', '🌓'],
+    [0.47, 'Waxing Gibbous', '🌔'],
+    [0.53, 'Full Moon', '🌕'],
+    [0.72, 'Waning Gibbous', '🌖'],
+    [0.78, 'Last Quarter', '🌗'],
+    [0.97, 'Waning Crescent', '🌘'],
+    [1.01, 'New Moon', '🌑']
+  ];
+  const hit = bands.find(b => frac < b[0]) || bands[0];
+  const illum = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
+  return { name: hit[1], icon: hit[2], illum, frac };
+}
+
+function moonDiskSVG(frac) {
+  const phase = ((frac % 1) + 1) % 1;
+  const cx = 36, cy = 36, R = 28;
+  const ratio = Math.cos(phase * 2 * Math.PI);
+  const e = Math.max(0.4, Math.abs(ratio) * R);
+  const waxing = phase < 0.5;
+  const outerSweep = waxing ? 1 : 0;
+  const termSweep = waxing ? (ratio > 0 ? 0 : 1) : (ratio > 0 ? 1 : 0);
+  const lit = `M ${cx} ${cy - R} A ${R} ${R} 0 0 ${outerSweep} ${cx} ${cy + R} A ${e.toFixed(2)} ${R} 0 0 ${termSweep} ${cx} ${cy - R} Z`;
+  return `<svg class="moon-disk" viewBox="0 0 72 72" aria-hidden="true">
+    <defs>
+      <radialGradient id="moonbody" cx="36%" cy="32%" r="70%">
+        <stop offset="0" stop-color="#fffdf8"/>
+        <stop offset="0.55" stop-color="#e6e0d2"/>
+        <stop offset="1" stop-color="#b9b3a6"/>
+      </radialGradient>
+      <clipPath id="moonlit"><path d="${lit}"/></clipPath>
+      <filter id="moonglow"><feGaussianBlur stdDeviation="1.6"/></filter>
+    </defs>
+    <circle cx="36" cy="36" r="30" fill="rgba(248,250,252,0.08)" filter="url(#moonglow)"/>
+    <circle cx="36" cy="36" r="28" fill="#0b1220"/>
+    <g clip-path="url(#moonlit)">
+      <circle cx="36" cy="36" r="28" fill="url(#moonbody)"/>
+      <circle cx="26" cy="28" r="5" fill="rgba(90,84,74,0.28)"/>
+      <circle cx="40" cy="42" r="3.5" fill="rgba(90,84,74,0.22)"/>
+      <circle cx="44" cy="26" r="2.2" fill="rgba(90,84,74,0.2)"/>
+      <circle cx="30" cy="44" r="2" fill="rgba(90,84,74,0.18)"/>
+    </g>
+    <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+  </svg>`;
+}
+
+function renderWeather() {
+  if (!weatherData) return;
+  const el = document.getElementById('weather-content');
+  const c = weatherData.current;
+  const h = weatherData.hourly;
+  const d = weatherData.daily;
+  const unit = '°F';
+
+  // Next 5 hours (starting from current hour)
+  const now = new Date();
+  const hourlySlice = [];
+  for (let i = 0; i < (h.time || []).length && hourlySlice.length < 5; i++) {
+    const t = new Date(h.time[i]);
+    if (t >= now - 30 * 60 * 1000) {
+      hourlySlice.push({
+        time: t.toLocaleTimeString([], {hour:'numeric'}),
+        temp: Math.round(h.temperature_2m[i]),
+        icon: weatherCodeToIcon(h.weather_code[i])
+      });
+    }
+  }
+  if (!hourlySlice.length) {
+    const base = Math.round(c.temperature_2m);
+    const icon = weatherCodeToIcon(c.weather_code);
+    for (let i = 0; i < 5; i++) {
+      const t = new Date(now.getTime() + i * 3600000);
+      hourlySlice.push({ time: t.toLocaleTimeString([], { hour: 'numeric' }), temp: base, icon });
+    }
+  }
+  const aqi = weatherData.aqi;
+  const aqiLabel = aqi == null ? '—' : Math.round(aqi);
+  const aqiColor = aqi == null ? '#94a3b8' : aqi <= 50 ? '#10b981' : aqi <= 100 ? '#eab308' : aqi <= 150 ? '#f97316' : '#ef4444';
+  const alerts = weatherData.alerts || [];
+  const moon = moonInfo(now, d.moon_phase && d.moon_phase[0]);
+
+  el.innerHTML = `
+    <div style="text-align:center; margin-bottom:0.35rem;">
+      <div class="weather-main">${Math.round(c.temperature_2m)}${unit} ${weatherCodeToIcon(c.weather_code)}</div>
+      <div style="font-size:0.95rem; opacity:0.9;">${weatherCodeToText(c.weather_code)} · ${weatherData.location}${weatherData.fallback ? ' (fallback)' : ''}</div>
+      <div class="meta">Humidity ${c.relative_humidity_2m}%</div>
+    </div>
+    <div style="display:flex; gap:0.3rem; width:100%; margin-bottom:0.35rem;">
+      <div style="flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:0.35rem; background:rgba(255,255,255,0.08); border-radius:8px; padding:0.2rem 0.4rem; line-height:1.2;">
+        <span>🌅</span><span style="opacity:0.8; font-size:0.75rem;">Sunrise</span><strong>${sunTime(d.sunrise && d.sunrise[0])}</strong>
+      </div>
+      <div style="flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:0.35rem; background:rgba(255,255,255,0.08); border-radius:8px; padding:0.2rem 0.4rem; line-height:1.2;">
+        <span>🌇</span><span style="opacity:0.8; font-size:0.75rem;">Sunset</span><strong>${sunTime(d.sunset && d.sunset[0])}</strong>
+      </div>
+    </div>
+    <div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.35rem 0 0.25rem;">Next Hours</div>
+    <div class="wx-hours">
+      ${hourlySlice.map(hr => `
+        <div class="wx-card" style="text-align:center; background:rgba(255,255,255,0.08); border-radius:8px;">
+          <div style="font-size:0.72rem; opacity:0.8;">${hr.time}</div>
+          <div class="wx-icon" style="font-size:1rem; line-height:1.1;">${hr.icon}</div>
+          <div style="font-weight:600; font-size:0.85rem;">${hr.temp}°</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.45rem 0 0.25rem;">5-Day Forecast</div>
+    <div class="wx-days">
+      ${(d.time || []).slice(0,5).map((day, i) => `
+        <div class="wx-card" style="text-align:center; background:rgba(255,255,255,0.08); border-radius:8px;">
+          <div style="font-size:0.72rem;">${new Date(day).toLocaleDateString(undefined,{weekday:'short'})}</div>
+          <div class="wx-icon" style="font-size:1rem; line-height:1.1;">${weatherCodeToIcon(d.weather_code[i])}</div>
+          <div style="font-size:0.85rem; font-weight:600;">${Math.round(d.temperature_2m_max[i])}°</div>
+          <div style="font-size:0.7rem; opacity:0.7;">${Math.round(d.temperature_2m_min[i])}°</div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="display:flex; gap:0.3rem; width:100%; margin-top:0.4rem;">
+      <div style="flex:1; text-align:center; background:rgba(255,255,255,0.08); border-radius:8px; padding:0.25rem 0.3rem;">
+        <div style="font-size:0.72rem; opacity:0.8;">Air quality</div>
+        <strong style="color:${aqiColor}">${aqiLabel}</strong>
+      </div>
+      <div style="flex:1; text-align:center; background:rgba(255,255,255,0.08); border-radius:8px; padding:0.25rem 0.3rem;">
+        <div style="font-size:0.72rem; opacity:0.8;">Wind</div>
+        <strong>${Math.round(c.wind_speed_10m)} mph</strong>
+      </div>
+    </div>
+    ${alerts.length ? `<div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.45rem 0 0.2rem;">Alerts</div>${alerts.map(a => `<div class="item" style="font-size:0.8rem;"><strong>${a.event}</strong>${a.severity ? ` · ${a.severity}` : ''}<div class="meta">${a.headline}</div></div>`).join('')}` : ''}
+    <div class="moon-row">
+      ${moonDiskSVG(moon.frac)}
+      <div>
+        <div style="font-weight:700;">${moon.name}</div>
+        <div class="meta">${moon.illum}% illuminated</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadStocks(quiet) {
+  const content = document.getElementById('stocks-content');
+  if (!quiet) content.innerHTML = '<div class="loading">Loading stocks…</div>';
+  const symbols = settings.stocks.filter(Boolean);
+  const results = await Promise.all(symbols.map(async sym => {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
+      const res = await fetch(PROXY + url);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      const result = data.chart?.result?.[0];
+      if (!result) return null;
+      const meta = result.meta;
+      const price = meta.regularMarketPrice;
+      const prev = meta.chartPreviousClose || meta.previousClose;
+      const change = price - prev;
+      const pct = prev ? (change / prev * 100) : 0;
+      const closes = result.indicators?.quote?.[0]?.close?.filter(c => c != null) || [];
+      return { symbol: sym, price, change, pct, name: meta.shortName || sym, closes };
+    } catch (e) {
+      return { symbol: sym, error: true };
+    }
+  }));
+  stockItems = results.filter(Boolean);
+  renderStocks();
+}
+
+function renderStocks() {
+  const el = document.getElementById('stocks-content');
+  if (!stockItems.length) {
+    el.innerHTML = '<div class="error">No stock data.</div>';
+    return;
+  }
+  const itemH = 52;
+  const visible = howMany(el, itemH, 'stocks');
+  if (!visible) { requestAnimationFrame(renderStocks); return; }
+  const start = window.stocksStart || 0;
+  const slice = stockItems.slice(start, start + visible);
+  if (slice.length < visible && stockItems.length > visible) {
+    slice.push(...stockItems.slice(0, visible - slice.length));
+  }
+  el.innerHTML = `<div class="items-scroller">${slice.map(s => {
+    if (s.error) return `<div class="item error">${s.symbol}: unavailable</div>`;
+    const cls = s.change >= 0 ? 'change-up' : 'change-down';
+    const sign = s.change >= 0 ? '+' : '';
+    let spark = '';
+    if (s.closes && s.closes.length > 2) {
+      const min = Math.min(...s.closes);
+      const max = Math.max(...s.closes);
+      const range = max - min || 1;
+      const points = s.closes.map((c, i) => {
+        const x = (i / (s.closes.length - 1)) * 80;
+        const y = 30 - ((c - min) / range) * 25;
+        return `${x},${y}`;
+      }).join(' ');
+      spark = `<svg class="spark" viewBox="0 0 80 32" preserveAspectRatio="none"><polyline fill="none" stroke="${s.change >= 0 ? '#10b981' : '#ef4444'}" stroke-width="1.6" vector-effect="non-scaling-stroke" points="${points}"/></svg>`;
+    }
+    return `<div class="item stock-row">
+      <div class="stock-label"><strong>${s.symbol}</strong> $${s.price.toFixed(2)}
+      <span class="${cls}"> ${sign}${s.change.toFixed(2)} (${sign}${s.pct.toFixed(2)}%)</span></div>
+      ${spark}
+    </div>`;
+  }).join('')}</div>${dotsHtml(stockItems.length, visible, start)}`;
+  tightenIfOverflow(el, 'stocks', renderStocks);
+  clearInterval(rotationTimers.stocks);
+  if (stockItems.length > visible) {
+    rotationTimers.stocks = setInterval(() => {
+      const el = document.getElementById('stocks-content');
+      el.classList.add('fading');
+      setTimeout(() => {
+        window.stocksStart = ((window.stocksStart || 0) + 1) % stockItems.length;
+        renderStocks();
+        el.classList.remove('fading');
+      }, 200);
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+function setupSettingsUI() {
+  const outlets = ['fox','cnn','reuters'];
+  document.getElementById('outlets-group').innerHTML = outlets.map(o => 
+    `<label><input type="checkbox" value="${o}" ${settings.outlets.includes(o)?'checked':''}> ${o.toUpperCase()}</label>`
+  ).join('');
+  const cats = ['politics','tech','business'];
+  document.getElementById('categories-group').innerHTML = cats.map(c => 
+    `<label><input type="checkbox" value="${c}" ${settings.categories.includes(c)?'checked':''}> ${c.charAt(0).toUpperCase()+c.slice(1)}</label>`
+  ).join('');
+  teamPick = new Set((settings.favoriteTeams || []).map(t => `${t.league}:${t.abbr}`));
+  leagueOn = new Set(settings.sportsLeagues || []);
+  leagueRest = new Set(settings.restLeagues || []);
+  document.getElementById('team-search').value = '';
+  renderLeagueTabs();
+  renderTeamPicker();
+  document.getElementById('weather-location').value = settings.weatherLocation;
+  clockPick = ((settings.clocks && settings.clocks.length) ? settings.clocks : defaultSettings.clocks).map(c => `${c.label}|${c.tz}`);
+  document.getElementById('clock-search').value = '';
+  renderClockPicker();
+  document.getElementById('local-news-location').value = settings.localNewsLocation || settings.weatherLocation;
+  document.getElementById('intl-country').value = settings.intlCountry || 'US';
+  document.getElementById('stocks-list').value = settings.stocks.join(', ');
+  document.getElementById('rotation-seconds').value = settings.rotationSeconds;
+  const age = document.getElementById('max-age');
+  if (age) age.value = settings.maxNewsAgeHours || 24;
+  ensureWidgets();
+  document.getElementById('canvas-mode').value = settings.canvas.mode === 'fixed' ? 'fixed' : 'auto';
+  document.getElementById('canvas-cols').value = settings.canvas.columns;
+  document.getElementById('canvas-rows').value = settings.canvas.rows;
+  document.getElementById('widget-settings').innerHTML = settings.widgetOrder.map(key => {
+    const label = (WIDGET_IDS[key] || [, key])[1];
+    const w = settings.widgets[key];
+    const opt = (size, text) => `<option value="${size}" ${w.size === size ? 'selected' : ''}>${text}</option>`;
+    const refresh = String(w.refreshSeconds || REFRESH_DEFAULTS[key] || 60);
+    const ropt = (sec, text) => `<option value="${sec}" ${refresh === String(sec) ? 'selected' : ''}>${text}</option>`;
+    return `<div class="widget-row" data-key="${key}">
+      <span class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag ${label}">⋮⋮</span>
+      <label><input type="checkbox" data-widget="${key}" ${w.visible ? 'checked' : ''}> ${label}</label>
+      <span>
+        <select data-widget-refresh="${key}" title="How often this widget reloads">
+          ${ropt(30,'30s')}${ropt(60,'1m')}${ropt(120,'2m')}${ropt(300,'5m')}${ropt(600,'10m')}${ropt(1800,'30m')}${ropt(3600,'1h')}
+        </select>
+        <select data-widget-size="${key}">
+          ${opt('1x1', '1×1')}${opt('2x1', '2×1')}${opt('1x2', '1×2')}${opt('2x2', '2×2')}
+        </select>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function renderClockPicker() {
+  const q = (document.getElementById('clock-search').value || '').trim().toLowerCase();
+  const selected = new Set(clockPick);
+  const rows = CITIES.filter(([label, tz]) => !q || label.toLowerCase().includes(q) || tz.toLowerCase().includes(q));
+  document.getElementById('clock-list').innerHTML = rows.map(([label, tz]) => {
+    const id = `${label}|${tz}`;
+    return `<label><input type="checkbox" value="${id}" ${selected.has(id) ? 'checked' : ''}> ${label} <span style="opacity:0.65">${tz.replace('_',' ')}</span></label>`;
+  }).join('') || '<div class="hint">No cities match.</div>';
+}
+
+function renderLeagueTabs() {
+  document.getElementById('league-tabs').innerHTML = LEAGUE_TABS.map(([id, label]) =>
+    `<button type="button" class="tab${id === teamTab ? ' on' : ''}" data-league="${id}">${label}</button>`
+  ).join('');
+}
+
+function renderTeamPicker() {
+  const q = (document.getElementById('team-search').value || '').trim().toLowerCase();
+  const lg = teamTab;
+  const label = (LEAGUE_TABS.find(([id]) => id === lg) || [lg, lg])[1];
+  const show = document.getElementById('show-league');
+  show.checked = leagueOn.has(lg);
+  document.getElementById('show-league-label').lastChild.textContent = ` Show ${label} games`;
+  const restBox = document.getElementById('rest-league');
+  restBox.checked = leagueRest.has(lg);
+  document.getElementById('rest-league-label').lastChild.textContent = ` Show the rest of ${label}`;
+  const teams = TEAMS[lg] || [];
+  const filtered = teams.filter(([abbr, name]) => !q || abbr.toLowerCase().includes(q) || name.toLowerCase().includes(q));
+  const parts = [`<div class="team-league">${filtered.length} of ${teams.length} teams</div>`];
+  filtered.forEach(([abbr, name]) => {
+    const id = `${lg}:${abbr}`;
+    parts.push(`<label><input type="checkbox" value="${id}" ${teamPick.has(id) ? 'checked' : ''}> ${name} <span style="opacity:0.65">(${abbr})</span></label>`);
+  });
+  document.getElementById('team-list').innerHTML = parts.join('') || '<div class="hint">No teams match.</div>';
+}
+
+async function ensureCollegeTeams() {
+  const specs = [
+    ['ncaaf', 'football/college-football'],
+    ['ncaab', 'basketball/mens-college-basketball']
+  ];
+  let changed = false;
+  await Promise.all(specs.map(async ([key, path]) => {
+    if (TEAMS[key] && TEAMS[key].length > 30) return;
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/teams?limit=900`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = data.sports?.[0]?.leagues?.[0]?.teams || [];
+      TEAMS[key] = list.map(row => {
+        const team = row.team || row;
+        const abbr = team.abbreviation || '';
+        const name = team.shortDisplayName || team.displayName || abbr;
+        return [abbr, name];
+      }).filter(t => t[0]).sort((a, b) => a[1].localeCompare(b[1]));
+      changed = true;
+    } catch (e) {
+      console.warn('Team list failed', key, e);
+    }
+  }));
+  if (changed && document.getElementById('settings-modal') && !document.getElementById('settings-modal').classList.contains('hidden')) {
+    renderTeamPicker();
+  }
+}
+
+function syncCanvasFields() {
+  const mode = document.getElementById('canvas-mode');
+  const fields = document.getElementById('canvas-fixed-fields');
+  if (mode && fields) fields.style.display = mode.value === 'fixed' ? '' : 'none';
+}
+
+function openSettings() {
+  hydrating = true;
+  setupSettingsUI();
+  hydrating = false;
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function persistSettings() {
+  if (hydrating) return;
+  clearTimeout(saveTimer);
+  applySettings();
+}
+
+function queueSave(e) {
+  if (hydrating) return;
+  if (e && e.target && (e.target.id === 'team-search' || e.target.id === 'clock-search')) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persistSettings, 350);
+}
+
+function applySettings() {
+  settings.outlets = [...document.querySelectorAll('#outlets-group input:checked')].map(i => i.value);
+  settings.categories = [...document.querySelectorAll('#categories-group input:checked')].map(i => i.value);
+  settings.sportsLeagues = [...leagueOn];
+  settings.favoriteTeams = [...teamPick].map(id => {
+    const [league, abbr] = id.split(':');
+    const found = (TEAMS[league] || []).find(t => t[0] === abbr);
+    return { league, abbr, name: found ? found[1] : abbr };
+  });
+  settings.restLeagues = [...leagueRest];
+  settings.weatherLocation = document.getElementById('weather-location').value.trim() || 'Los Angeles';
+  settings.clocks = clockPick.map(id => {
+    const [label, tz] = id.split('|');
+    const found = CITIES.find(c => c[0] === label && c[1] === tz);
+    return found ? { label, tz, lat: found[2], lon: found[3] } : { label, tz };
+  }).filter(c => c.label && c.tz);
+  if (!settings.clocks.length) settings.clocks = defaultSettings.clocks;
+  settings.localNewsLocation = document.getElementById('local-news-location').value.trim() || settings.weatherLocation;
+  settings.intlCountry = document.getElementById('intl-country').value || 'US';
+  settings.stocks = document.getElementById('stocks-list').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  settings.rotationSeconds = Math.max(5, parseInt(document.getElementById('rotation-seconds').value) || 10);
+  settings.maxNewsAgeHours = Math.max(1, parseInt(document.getElementById('max-age').value) || 24);
+  settings.canvas.mode = document.getElementById('canvas-mode').value === 'fixed' ? 'fixed' : 'auto';
+  settings.canvas.columns = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-cols').value, 10) || 3));
+  settings.canvas.rows = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-rows').value, 10) || 2));
+  document.querySelectorAll('#widget-settings input[data-widget]').forEach(input => {
+    const key = input.dataset.widget;
+    if (!settings.widgets[key]) settings.widgets[key] = { visible: true, size: '1x1' };
+    settings.widgets[key].visible = input.checked;
+  });
+  document.querySelectorAll('#widget-settings select[data-widget-size]').forEach(sel => {
+    settings.widgets[sel.dataset.widgetSize].size = sel.value;
+  });
+  document.querySelectorAll('#widget-settings select[data-widget-refresh]').forEach(sel => {
+    const key = sel.dataset.widgetRefresh;
+    settings.widgets[key].refreshSeconds = Math.max(30, parseInt(sel.value, 10) || 60);
+  });
+  const order = [...document.querySelectorAll('#widget-settings .widget-row')].map(row => row.dataset.key).filter(Boolean);
+  if (order.length) settings.widgetOrder = order;
+  if (!settings.outlets.length) settings.outlets = ['fox'];
+  if (!settings.categories.length) settings.categories = ['politics'];
+  if (!settings.sportsLeagues.length) settings.sportsLeagues = ['nfl'];
+  if (!settings.stocks.length) settings.stocks = ['AAPL','SPY'];
+  saveSettings();
+  applyLayout();
+  scheduleRefreshes();
+  refreshAll();
+}
+
+function renderClocks() {
+  const el = document.getElementById('clocks-content');
+  if (!el) return;
+  const clocks = (settings.clocks && settings.clocks.length) ? settings.clocks : defaultSettings.clocks;
+  if (!clocks.length) { el.innerHTML = ''; return; }
+  const fullFit = howMany(el, 186, 'clocks');
+  if (!fullFit) { requestAnimationFrame(renderClocks); return; }
+  const compactFit = howMany(el, 158, 'clocks');
+  const compact = fullFit < clocks.length && compactFit > fullFit;
+  const visible = Math.min(clocks.length, compact ? compactFit : fullFit);
+  const start = (window.clocksStart || 0) % clocks.length;
+  const slice = [];
+  for (let i = 0; i < visible; i++) slice.push(clocks[(start + i) % clocks.length]);
+  el.innerHTML = `<div class="items-scroller"><div class="clock-grid${compact ? ' compact' : ''}">${slice.map(c => clockFace(c, compact)).join('')}</div></div>${dotsHtml(clocks.length, visible, start)}`;
+  tightenIfOverflow(el, 'clocks', renderClocks);
+  const sec = settings.rotationSeconds || 10;
+  if (window.clocksVisible !== visible || window.clocksRotateSec !== sec) {
+    window.clocksVisible = visible;
+    window.clocksRotateSec = sec;
+    clearInterval(rotationTimers.clocks);
+    if (clocks.length > visible) {
+      rotationTimers.clocks = setInterval(() => {
+        window.clocksStart = ((window.clocksStart || 0) + 1) % clocks.length;
+        renderClocks();
+      }, sec * 1000);
+    }
+  }
+}
+
+const CITIES = [
+  ['New York','America/New_York',40.71,-74.01],['Los Angeles','America/Los_Angeles',34.05,-118.24],['Chicago','America/Chicago',41.88,-87.63],
+  ['Houston','America/Chicago',29.76,-95.37],['Phoenix','America/Phoenix',33.45,-112.07],['Philadelphia','America/New_York',39.95,-75.17],
+  ['San Antonio','America/Chicago',29.42,-98.49],['San Diego','America/Los_Angeles',32.72,-117.16],['Dallas','America/Chicago',32.78,-96.8],
+  ['Austin','America/Chicago',30.27,-97.74],['San Francisco','America/Los_Angeles',37.77,-122.42],['Seattle','America/Los_Angeles',47.61,-122.33],
+  ['Denver','America/Denver',39.74,-104.99],['Boston','America/New_York',42.36,-71.06],['Washington','America/New_York',38.91,-77.04],
+  ['Miami','America/New_York',25.76,-80.19],['Atlanta','America/New_York',33.75,-84.39],['Detroit','America/Detroit',42.33,-83.05],
+  ['Minneapolis','America/Chicago',44.98,-93.27],['Las Vegas','America/Los_Angeles',36.17,-115.14],['Portland','America/Los_Angeles',45.52,-122.68],
+  ['Honolulu','Pacific/Honolulu',21.31,-157.86],['Anchorage','America/Anchorage',61.22,-149.9],
+  ['Toronto','America/Toronto',43.65,-79.38],['Vancouver','America/Vancouver',49.28,-123.12],['Montreal','America/Toronto',45.5,-73.57],
+  ['Mexico City','America/Mexico_City',19.43,-99.13],['São Paulo','America/Sao_Paulo',-23.55,-46.63],['Buenos Aires','America/Argentina/Buenos_Aires',-34.6,-58.38],
+  ['Lima','America/Lima',-12.05,-77.04],['Bogotá','America/Bogota',4.71,-74.07],['Santiago','America/Santiago',-33.45,-70.67],
+  ['London','Europe/London',51.51,-0.13],['Dublin','Europe/Dublin',53.35,-6.26],['Lisbon','Europe/Lisbon',38.72,-9.14],
+  ['Madrid','Europe/Madrid',40.42,-3.7],['Paris','Europe/Paris',48.86,2.35],['Brussels','Europe/Brussels',50.85,4.35],
+  ['Amsterdam','Europe/Amsterdam',52.37,4.9],['Berlin','Europe/Berlin',52.52,13.41],['Rome','Europe/Rome',41.9,12.5],
+  ['Zurich','Europe/Zurich',47.38,8.54],['Vienna','Europe/Vienna',48.21,16.37],['Warsaw','Europe/Warsaw',52.23,21.01],
+  ['Stockholm','Europe/Stockholm',59.33,18.07],['Oslo','Europe/Oslo',59.91,10.75],['Copenhagen','Europe/Copenhagen',55.68,12.57],
+  ['Helsinki','Europe/Helsinki',60.17,24.94],['Athens','Europe/Athens',37.98,23.73],['Istanbul','Europe/Istanbul',41.01,28.98],
+  ['Moscow','Europe/Moscow',55.76,37.62],['Kyiv','Europe/Kyiv',50.45,30.52],
+  ['Cairo','Africa/Cairo',30.04,31.24],['Lagos','Africa/Lagos',6.52,3.38],['Johannesburg','Africa/Johannesburg',-26.2,28.05],
+  ['Nairobi','Africa/Nairobi',-1.29,36.82],['Dubai','Asia/Dubai',25.2,55.27],['Tel Aviv','Asia/Jerusalem',32.09,34.78],
+  ['Riyadh','Asia/Riyadh',24.71,46.68],['Mumbai','Asia/Kolkata',19.08,72.88],['Delhi','Asia/Kolkata',28.61,77.21],
+  ['Bangkok','Asia/Bangkok',13.76,100.5],['Singapore','Asia/Singapore',1.35,103.82],['Hong Kong','Asia/Hong_Kong',22.32,114.17],
+  ['Taipei','Asia/Taipei',25.03,121.57],['Shanghai','Asia/Shanghai',31.23,121.47],['Beijing','Asia/Shanghai',39.9,116.41],
+  ['Seoul','Asia/Seoul',37.57,126.98],['Tokyo','Asia/Tokyo',35.68,139.69],['Manila','Asia/Manila',14.6,120.98],
+  ['Jakarta','Asia/Jakarta',-6.21,106.85],['Sydney','Australia/Sydney',-33.87,151.21],['Melbourne','Australia/Melbourne',-37.81,144.96],
+  ['Perth','Australia/Perth',-31.95,115.86],['Auckland','Pacific/Auckland',-36.85,174.76]
+];
+
+function cityCoords(c) {
+  if (c && c.lat != null && c.lon != null) return c;
+  const hit = CITIES.find(x => x[0] === c.label && x[1] === c.tz) || CITIES.find(x => x[1] === c.tz);
+  return hit ? { label: c.label || hit[0], tz: hit[1], lat: hit[2], lon: hit[3] } : c;
+}
+
+function zoneParts(tz, date) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short', hourCycle: 'h23'
+  }).formatToParts(date).map(p => [p.type, p.value]));
+  return { h: +parts.hour, m: +parts.minute, s: +parts.second, day: parts.weekday };
+}
+
+function analogSVG(h, m, s) {
+  const rad = (deg) => (deg - 90) * Math.PI / 180;
+  const hand = (deg, len, width, color) => {
+    const a = rad(deg);
+    return `<line x1="50" y1="50" x2="${(50 + Math.cos(a) * len).toFixed(1)}" y2="${(50 + Math.sin(a) * len).toFixed(1)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
+  };
+  return `<svg class="analog" viewBox="0 0 100 100" aria-hidden="true">
+    <circle cx="50" cy="50" r="46" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+    ${Array.from({length:12}, (_,i) => {
+      const a = rad(i * 30);
+      const inner = i % 3 === 0 ? 34 : 38;
+      return `<line x1="${(50+Math.cos(a)*inner).toFixed(1)}" y1="${(50+Math.sin(a)*inner).toFixed(1)}" x2="${(50+Math.cos(a)*44).toFixed(1)}" y2="${(50+Math.sin(a)*44).toFixed(1)}" stroke="#94a3b8" stroke-width="${i%3===0?2:1}"/>`;
+    }).join('')}
+    ${hand(((h % 12) + m / 60) * 30, 24, 3.2, '#e2e8f0')}
+    ${hand(m * 6 + s * 0.1, 32, 2, '#e2e8f0')}
+    ${hand(s * 6, 36, 1, '#f87171')}
+    <circle cx="50" cy="50" r="2.4" fill="#f8fafc"/>
+  </svg>`;
+}
+
+function solarMinutes(lat, lon, tz) {
+  const now = new Date();
+  const parts = zoneParts(tz, now);
+  const utc = zoneParts('UTC', now);
+  const local = parts.h * 60 + parts.m + parts.s / 60;
+  let offset = (parts.h * 60 + parts.m) - (utc.h * 60 + utc.m);
+  if (offset > 720) offset -= 1440;
+  if (offset < -720) offset += 1440;
+  const day = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(now).map(p => [p.type, p.value]));
+  const y = +day.year, m = +day.month, d = +day.day;
+  const doy = Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(y, 0, 0)) / 86400000);
+  const lngHour = lon / 15;
+  const calc = (isRise) => {
+    const t = doy + ((isRise ? 6 : 18) - lngHour) / 24;
+    const M = (0.9856 * t) - 3.289;
+    let L = M + (1.916 * Math.sin(M * Math.PI / 180)) + (0.020 * Math.sin(2 * M * Math.PI / 180)) + 282.634;
+    L = ((L % 360) + 360) % 360;
+    let RA = Math.atan(0.91764 * Math.tan(L * Math.PI / 180)) * 180 / Math.PI;
+    RA = ((RA % 360) + 360) % 360;
+    RA = (RA + (Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90)) / 15;
+    const sinDec = 0.39782 * Math.sin(L * Math.PI / 180);
+    const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(90.833 * Math.PI / 180) - sinDec * Math.sin(lat * Math.PI / 180)) / (cosDec * Math.cos(lat * Math.PI / 180));
+    if (cosH > 1 || cosH < -1) return null;
+    let H = (isRise ? 360 - Math.acos(cosH) * 180 / Math.PI : Math.acos(cosH) * 180 / Math.PI) / 15;
+    let UT = (H + RA - (0.06571 * t) - 6.622 - lngHour) % 24;
+    if (UT < 0) UT += 24;
+    let localH = UT + offset / 60;
+    if (localH < 0) localH += 24;
+    if (localH >= 24) localH -= 24;
+    return localH * 60;
+  };
+  let rise = calc(true);
+  let set = calc(false);
+  if (rise != null && set != null && set < rise) set += 1440;
+  return { local, rise, set };
+}
+
+function fmtMin(mins) {
+  if (mins == null || Number.isNaN(mins)) return '—';
+  const m = ((Math.round(mins) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m / 60);
+  const mm = String(m % 60).padStart(2, '0');
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${mm} ${h24 < 12 ? 'AM' : 'PM'}`;
+}
+
+function sunArc(sun, id) {
+  const left = 12, right = 288, base = 168, amp = 112;
+  const rise = sun.rise;
+  const set = sun.set > 1440 ? sun.set - 1440 : sun.set;
+  const daySpan = Math.max(1, set - rise);
+  const nightSpan = Math.max(1, 1440 - daySpan);
+  const local = ((sun.local % 1440) + 1440) % 1440;
+  const night = local < rise || local > set;
+  let t;
+  if (!night) t = (local - rise) / daySpan;
+  else if (local > set) t = (local - set) / nightSpan;
+  else t = (local + 1440 - set) / nightSpan;
+  t = Math.max(0, Math.min(1, t));
+  const pts = [];
+  for (let i = 0; i <= 36; i++) {
+    const u = i / 36;
+    pts.push([left + u * (right - left), base - Math.sin(u * Math.PI) * amp]);
+  }
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const sx = left + t * (right - left);
+  const sy = base - Math.sin(t * Math.PI) * amp;
+  const skyTop = night ? '#121a2b' : '#1d4e89';
+  const skyBot = night ? '#0b1020' : '#12345f';
+  const marker = `<div class="sun-marker${night ? ' moon' : ''}" style="left:${(sx / 300 * 100).toFixed(2)}%;top:${(sy / 180 * 100).toFixed(2)}%"></div>`;
+  const leftName = night ? 'Sunset' : 'Sunrise';
+  const rightName = night ? 'Sunrise' : 'Sunset';
+  const leftWhen = fmtMin(night ? set : rise);
+  const rightWhen = fmtMin(night ? rise : set);
+  const svg = `<svg class="sun-arc" viewBox="0 0 300 180" preserveAspectRatio="none" role="img" aria-label="${leftName} ${leftWhen}, ${rightName} ${rightWhen}">
+    <defs>
+      <linearGradient id="sky${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${skyTop}"/>
+        <stop offset="1" stop-color="${skyBot}"/>
+      </linearGradient>
+    </defs>
+    <rect width="300" height="180" fill="url(#sky${id})"/>
+    <path d="${d}" fill="none" stroke="${night ? 'rgba(226,232,240,0.85)' : 'rgba(248,250,252,0.95)'}" stroke-width="2.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+  const times = `<div class="sun-times"><span><em>${leftName}</em>${leftWhen}</span><span style="text-align:right"><em>${rightName}</em>${rightWhen}</span></div>`;
+  return { svg, times, marker, night };
+}
+
+function clockFace(raw, compact) {
+  const c = cityCoords(raw);
+  let parts = { h: 0, m: 0, s: 0, day: '' };
+  let digital = '—';
+  let dateLine = '';
+  try {
+    parts = zoneParts(c.tz, new Date());
+    digital = new Date().toLocaleTimeString('en-US', { timeZone: c.tz, hour: 'numeric', minute: '2-digit' });
+    dateLine = new Date().toLocaleDateString('en-US', { timeZone: c.tz, weekday: 'short', month: 'short', day: 'numeric' });
+  } catch (e) {}
+  const sun = (c.lat != null) ? solarMinutes(c.lat, c.lon, c.tz) : null;
+  const gid = String(c.tz || c.label || 'c').replace(/\W/g, '');
+  const sunUi = (sun && sun.rise != null && sun.set != null) ? sunArc(sun, gid) : { svg: '', times: '', marker: '', night: false };
+  const tone = sunUi.svg ? (sunUi.night ? 'night' : 'day') : '';
+  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="meta">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s)}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
+}
+
+let techItems = [];
+async function loadTech(quiet) {
+  const content = document.getElementById('tech-content');
+  if (!content) return;
+  if (!quiet) content.innerHTML = '<div class="loading">Loading tech…</div>';
+  try {
+    const res = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+    if (!res.ok) throw new Error(res.status);
+    const ids = (await res.json()).slice(0, 12);
+    const stories = await Promise.all(ids.map(id => fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json()).catch(() => null)));
+    techItems = stories.filter(s => s && s.title);
+  } catch (e) {
+    techItems = [];
+    content.innerHTML = '<div class="error">Tech wire unavailable.</div>';
+    return;
+  }
+  if (!quiet) window.techStart = 0;
+  renderTech();
+}
+
+function renderTech() {
+  const el = document.getElementById('tech-content');
+  if (!el) return;
+  if (!techItems.length) {
+    el.innerHTML = '<div class="error">No tech stories.</div>';
+    return;
+  }
+  const itemH = 72;
+  const visible = howMany(el, itemH, 'tech');
+  if (!visible) { requestAnimationFrame(renderTech); return; }
+  const start = window.techStart || 0;
+  const slice = techItems.slice(start, start + visible);
+  el.innerHTML = `<div class="items-scroller">${slice.map(s => `
+    <div class="item">
+      <a href="${s.url || 'https://news.ycombinator.com/item?id=' + s.id}" target="_blank" rel="noopener">${s.title}</a>
+      <div class="meta">${s.score || 0} points · ${s.descendants || 0} comments · ${s.time ? new Date(s.time * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</div>
+    </div>
+  `).join('')}</div>${dotsHtml(techItems.length, visible, start)}`;
+  tightenIfOverflow(el, 'tech', renderTech);
+  clearInterval(rotationTimers.tech);
+  if (techItems.length > visible) {
+    rotationTimers.tech = setInterval(() => {
+      window.techStart = ((window.techStart || 0) + 1) % techItems.length;
+      renderTech();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+let headlineItems = [];
+async function loadHeadlines(quiet) {
+  const content = document.getElementById('headlines-content');
+  if (!content) return;
+  if (!quiet) content.innerHTML = '<div class="loading">Loading headlines…</div>';
+  const urls = [
+    'https://moxie.foxnews.com/google-publisher/latest.xml',
+    'https://feeds.bbci.co.uk/news/rss.xml',
+    'https://www.latimes.com/local/rss2.0.xml'
+  ];
+  const results = await Promise.all(urls.map(fetchRSS));
+  const all = results.flat().filter(i => i.title);
+  const pictured = all.filter(i => i.image);
+  headlineItems = (pictured.length ? pictured : all).slice(0, 10);
+  if (!quiet) window.headlineStart = 0;
+  renderHeadlines();
+}
+
+function renderHeadlines() {
+  const el = document.getElementById('headlines-content');
+  if (!el) return;
+  if (!headlineItems.length) {
+    el.innerHTML = '<div class="error">No headline photos right now.</div>';
+    return;
+  }
+  const index = (window.headlineStart || 0) % headlineItems.length;
+  const item = headlineItems[index];
+  el.innerHTML = `<div class="headline-slide">
+    ${item.image ? `<a class="headline-img-link" href="${item.link}" target="_blank" rel="noopener"><img class="headline-img" src="${item.image}" alt="" onerror="this.parentNode.style.display='none'"></a>` : ''}
+    <a class="headline-title" href="${item.link}" target="_blank" rel="noopener">${item.title}</a>
+    ${item.summary ? `<div class="headline-summary">${item.summary}</div>` : ''}
+    <div class="meta">${item.source || ''}</div>
+  </div>${dotsHtml(headlineItems.length, 1, index)}`;
+  clearInterval(rotationTimers.headlines);
+  if (headlineItems.length > 1) {
+    rotationTimers.headlines = setInterval(() => {
+      window.headlineStart = ((window.headlineStart || 0) + 1) % headlineItems.length;
+      renderHeadlines();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+async function refreshAll() {
+  updateClock();
+  await Promise.all([loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadSports(), loadWeather(), loadStocks()]);
+}
+
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+document.getElementById('download-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('download-btn');
+  btn.textContent = 'Downloading…';
+  try {
+    const res = await fetch(location.href, { cache: 'no-store' });
+    const text = await res.text();
+    if (window.showSaveFilePicker) {
+      const handle = await showSaveFilePicker({
+        suggestedName: 'index.html',
+        types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      btn.textContent = 'Saved';
+    } else {
+      const blob = new Blob([text], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'index.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      btn.textContent = 'Check browser Downloads';
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') btn.textContent = 'Download index.html';
+    else btn.textContent = 'Download failed';
+  }
+  setTimeout(() => { btn.textContent = 'Download index.html'; }, 2500);
+});
+let dragRow = null;
+function clearDropMarks() {
+  document.querySelectorAll('#widget-settings .drop-before, #widget-settings .drop-after').forEach(el => {
+    el.classList.remove('drop-before', 'drop-after');
+  });
+}
+document.getElementById('widget-settings').addEventListener('dragstart', e => {
+  const row = e.target.closest('.widget-row');
+  if (!row || !e.target.closest('.drag-handle')) { e.preventDefault(); return; }
+  dragRow = row;
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', row.dataset.key || '');
+});
+document.getElementById('widget-settings').addEventListener('dragover', e => {
+  if (!dragRow) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const row = e.target.closest('.widget-row');
+  clearDropMarks();
+  if (!row || row === dragRow) return;
+  const after = e.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2;
+  row.classList.add(after ? 'drop-after' : 'drop-before');
+});
+document.getElementById('widget-settings').addEventListener('drop', e => {
+  e.preventDefault();
+  const marked = document.querySelector('#widget-settings .drop-before, #widget-settings .drop-after');
+  if (dragRow && marked && marked !== dragRow) {
+    const after = marked.classList.contains('drop-after');
+    marked.parentNode.insertBefore(dragRow, after ? marked.nextElementSibling : marked);
+  }
+  clearDropMarks();
+});
+document.getElementById('widget-settings').addEventListener('dragend', () => {
+  clearDropMarks();
+  if (!dragRow) return;
+  dragRow.classList.remove('dragging');
+  dragRow = null;
+  queueSave();
+});
+document.getElementById('cancel-settings').addEventListener('click', () => { persistSettings(); closeSettings(); });
+document.getElementById('save-settings').addEventListener('click', () => { persistSettings(); closeSettings(); });
+document.getElementById('canvas-mode').addEventListener('change', syncCanvasFields);
+document.querySelector('.settings-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn || !btn.dataset.tab) return;
+  document.querySelectorAll('.modal-content > .settings-tabs .tab').forEach(b => b.classList.toggle('on', b === btn));
+  document.getElementById('tab-layout').classList.toggle('hidden', btn.dataset.tab !== 'layout');
+  document.getElementById('tab-feeds').classList.toggle('hidden', btn.dataset.tab !== 'feeds');
+  document.getElementById('tab-teams').classList.toggle('hidden', btn.dataset.tab !== 'teams');
+});
+document.getElementById('league-tabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-league]');
+  if (!btn) return;
+  teamTab = btn.dataset.league;
+  document.getElementById('team-search').value = '';
+  renderLeagueTabs();
+  renderTeamPicker();
+});
+document.getElementById('team-search').addEventListener('input', () => renderTeamPicker());
+document.getElementById('clock-search').addEventListener('input', () => renderClockPicker());
+document.getElementById('clock-list').addEventListener('change', e => {
+  const input = e.target;
+  if (!input.matches('input[type="checkbox"]')) return;
+  if (input.checked) {
+    if (!clockPick.includes(input.value)) clockPick.push(input.value);
+  } else clockPick = clockPick.filter(id => id !== input.value);
+  queueSave(e);
+});
+document.getElementById('show-league').addEventListener('change', e => {
+  if (e.target.checked) leagueOn.add(teamTab);
+  else leagueOn.delete(teamTab);
+  queueSave(e);
+});
+document.getElementById('rest-league').addEventListener('change', e => {
+  if (e.target.checked) leagueRest.add(teamTab);
+  else leagueRest.delete(teamTab);
+  queueSave(e);
+});
+document.getElementById('team-list').addEventListener('change', e => {
+  const input = e.target;
+  if (!input.matches('input[type="checkbox"]')) return;
+  if (input.checked) {
+    teamPick.add(input.value);
+    leagueOn.add(teamTab);
+    document.getElementById('show-league').checked = true;
+  } else teamPick.delete(input.value);
+  queueSave(e);
+});
+document.getElementById('settings-modal').addEventListener('input', queueSave);
+document.getElementById('settings-modal').addEventListener('change', queueSave);
+document.getElementById('settings-modal').addEventListener('click', e => {
+  if (e.target.id === 'settings-modal') {
+    persistSettings();
+    closeSettings();
+  }
+});
+
+// Init
+loadSettings();
+applyLayout();
+updateClock();
+setInterval(updateClock, 30000);
+refreshAll();
+scheduleRefreshes();
+setInterval(renderClocks, 1000);
+
+function scheduleRefreshes() {
+  if (!window.widgetRefreshTimers) window.widgetRefreshTimers = {};
+  Object.values(window.widgetRefreshTimers).forEach(clearInterval);
+  const loaders = {
+    news: loadNews, local: loadLocalNews, intl: loadIntlNews, headlines: loadHeadlines,
+    sports: loadSports, weather: loadWeather, stocks: loadStocks, tech: loadTech
+  };
+  Object.entries(loaders).forEach(([key, fn]) => {
+    const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
+    window.widgetRefreshTimers[key] = setInterval(() => {
+      if (settings.widgets[key] && settings.widgets[key].visible === false) return;
+      fn(true);
+    }, sec * 1000);
+  });
+}
+
+function refitPanels() {
+  applyLayout();
+  Object.keys(fitNudge).forEach(k => { fitNudge[k] = 0; });
+  renderNews();
+  renderLocalNews();
+  renderIntlNews();
+  renderSports();
+  renderStocks();
+  renderWeather();
+  renderTech();
+  renderHeadlines();
+  renderClocks();
+}
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(refitPanels, 120);
+});
+if (window.ResizeObserver) {
+  new ResizeObserver(() => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(refitPanels, 120);
+  }).observe(document.getElementById('dashboard'));
+}
+requestAnimationFrame(() => requestAnimationFrame(refitPanels));
+</script>
+</body>
+</html>
