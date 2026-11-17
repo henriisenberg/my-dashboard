@@ -371,7 +371,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v65 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v66 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -2085,9 +2085,13 @@ function renderHeadlines() {
   }
 }
 
-async function refreshAll() {
+async function refreshAll(opts) {
   updateClock();
-  await Promise.all([loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadSports(), loadWeather(), loadStocks()]);
+  const skipStocks = opts && opts.skipClosedStocks && stockItems.length && !marketIsLive();
+  await Promise.all([
+    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadSports(), loadWeather(),
+    skipStocks ? Promise.resolve() : loadStocks()
+  ]);
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettings);
@@ -2194,7 +2198,10 @@ loadSettings();
 applyLayout();
 updateClock();
 setInterval(updateClock, 30000);
-refreshAll();
+if (document.visibilityState === 'visible') refreshAll();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshAll({ skipClosedStocks: true });
+});
 scheduleRefreshes();
 setInterval(renderClocks, 1000);
 
@@ -2222,6 +2229,7 @@ function scheduleRefreshes() {
   Object.entries(loaders).forEach(([key, fn]) => {
     const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
     window.widgetRefreshTimers[key] = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       if (settings.widgets[key] && settings.widgets[key].visible === false) return;
       if (key === 'stocks' && !marketIsLive()) return;
       fn(true);
