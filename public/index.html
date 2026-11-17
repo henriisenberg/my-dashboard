@@ -171,9 +171,9 @@ header h1 { margin: 0; font-size: 1.25rem; }
 .news-headline { font-size: 1.08rem; font-weight: 700; line-height: 1.28; }
 .news-headline img { width: 16px; height: 16px; vertical-align: -2px; margin-right: 0.28rem; }
 .news-headline a { font-weight: 700; }
-.stock-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: nowrap; }
-.stock-label { flex: 1 1 auto; min-width: 0; }
-.spark { flex: 1 1 42%; min-width: 28px; height: 28px; display: block; }
+.stock-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: nowrap; overflow: hidden; }
+.stock-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spark { flex: 0 1 38%; width: 38%; min-width: 0; max-width: 42%; height: 28px; display: block; }
 .meta { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; overflow-wrap: anywhere; }
 @container widget (max-width: 340px) {
   h2 { font-size: 0.85rem; margin-bottom: 0.3rem; }
@@ -283,7 +283,10 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 #cancel-settings { background: #475569; color: white; }
 .loading { opacity: 0.6; font-style: italic; }
 .error { color: #f87171; font-size: 0.85rem; }
-#weather-content { overflow: auto; }
+#weather-content { overflow: auto; scrollbar-width: none; }
+#weather-content::-webkit-scrollbar { width: 0; height: 0; }
+#weather-content:hover { scrollbar-width: thin; }
+#weather-content:hover::-webkit-scrollbar { width: 8px; height: 8px; }
 .wx-hours, .wx-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; width: 100%; }
 .wx-hours .wx-card, .wx-days .wx-card { min-width: 0; padding: 0.28rem 0.05rem; }
 .clock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; align-content: start; }
@@ -294,9 +297,11 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .clock-card.day { background: #12345f; }
 .clock-card.night { background: #0b1020; }
 .sun-stage { position: absolute; left: 0; right: 0; top: 0; bottom: 2.15rem; height: auto; z-index: 0; pointer-events: none; }
-.clock-head { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 54px; }
-.clock-meta { min-width: 0; flex: 1 1 auto; text-align: left; }
+.clock-head { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; width: 100%; min-height: 54px; }
+.clock-meta { min-width: 0; flex: 1 1 auto; text-align: left; align-self: flex-start; }
 .clock-meta .meta { opacity: 0.92; }
+.clock-city { font-size: 1.05rem; font-weight: 700; line-height: 1.15; }
+.clock-grid.compact .clock-city { font-size: 0.95rem; }
 .analog { width: 54px; height: 54px; min-width: 54px; max-width: 54px; display: block; flex: 0 0 54px; margin-left: auto; position: relative; z-index: 1; }
 .clock-time { position: absolute; left: 50%; top: calc(66% - 0.2rem); transform: translate(-50%, -50%); margin: 0; z-index: 1; text-align: center; font-size: 2.25rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
 .sun-arc { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; z-index: 0; display: block; }
@@ -366,7 +371,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v59 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v65 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -731,15 +736,34 @@ function updateClock() {
 
 function rssImage(item) {
   const nodes = item.getElementsByTagName('*');
+  const bad = /pixel|spacer|placeholder|1x1|tracking|logo|icon|favicon|blank\./i;
   for (const el of nodes) {
     const name = (el.localName || el.nodeName || '').toLowerCase();
     if (!/content|thumbnail|enclosure/.test(name)) continue;
     const url = el.getAttribute('url') || el.getAttribute('href') || '';
-    if (/^https?:/i.test(url) && !/\.(mp3|mp4|m4a)(\?|$)/i.test(url)) return url;
+    if (/^https?:/i.test(url) && !/\.(mp3|mp4|m4a)(\?|$)/i.test(url) && !bad.test(url)) return url;
   }
   const blob = [...nodes].map(el => el.textContent || '').join('\n');
   const match = blob.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match ? match[1] : '';
+  return match && !bad.test(match[1]) ? match[1] : '';
+}
+
+function bindThumbs(root) {
+  root.querySelectorAll('img.news-thumb, img.headline-img').forEach(img => {
+    const drop = () => img.closest('a.headline-img-link') ? img.closest('a.headline-img-link').remove() : img.remove();
+    const keep = () => {
+      if (img.naturalWidth < 48 || img.naturalHeight < 48) drop();
+      else img.hidden = false;
+    };
+    img.hidden = true;
+    if (img.complete) {
+      if (img.naturalWidth) keep();
+      else drop();
+    } else {
+      img.addEventListener('load', keep, { once: true });
+      img.addEventListener('error', drop, { once: true });
+    }
+  });
 }
 
 async function fetchRSS(url) {
@@ -763,8 +787,19 @@ async function fetchRSS(url) {
       const items = [...xml.querySelectorAll('item')].slice(0, 12).map(item => {
         const image = rssImage(item);
         const desc = item.querySelector('description')?.textContent || '';
-        const host = (() => { try { return new URL(url).hostname; } catch (e) { return url; } })();
-        const source = host.includes('fox') ? 'Fox' : host.includes('cnn') ? 'CNN' : host.includes('reuters') ? 'Reuters' : host.includes('bbc') ? 'BBC' : host.includes('latimes') ? 'LA Times' : host.includes('nytimes') ? 'NY Times' : host.includes('axios') ? 'Axios' : host.includes('npr') ? 'NPR' : host.includes('timesofisrael') ? 'Times of Israel' : 'News';
+        const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; } })();
+        const named = [
+          ['foxnews', 'Fox'], ['cnn.', 'CNN'], ['reuters', 'Reuters'], ['bbc.', 'BBC'],
+          ['latimes', 'LA Times'], ['nytimes', 'NY Times'], ['axios', 'Axios'], ['npr.org', 'NPR'],
+          ['timesofisrael', 'Times of Israel'], ['dw.com', 'DW'], ['france24', 'France 24'],
+          ['cbc.ca', 'CBC'], ['abc.net.au', 'ABC'], ['nhk.or.jp', 'NHK'], ['indiatimes', 'Times of India'],
+          ['chicagotribune', 'Chicago Tribune'], ['sfchronicle', 'SF Chronicle'], ['seattletimes', 'Seattle Times'],
+          ['bostonglobe', 'Boston Globe'], ['miamiherald', 'Miami Herald'], ['houstonchronicle', 'Houston Chronicle'],
+          ['washingtonpost', 'Washington Post']
+        ];
+        const feedSource = named.find(([key]) => host.includes(key));
+        const rssSource = (item.querySelector('source')?.textContent || '').replace(/<[^>]*>/g, '').trim();
+        const source = rssSource || (feedSource ? feedSource[1] : host.split('.')[0]);
         return {
           title: item.querySelector('title')?.textContent || '',
           link: item.querySelector('link')?.textContent || '',
@@ -812,6 +847,13 @@ async function loadNews(quiet) {
 
 const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, stocks: 0, tech: 0, clocks: 0 };
 
+function nextPageStart(start, total, visible) {
+  const size = Math.max(1, visible);
+  const pages = Math.max(1, Math.ceil(total / size));
+  const current = Math.floor((start || 0) / size) % pages;
+  return ((current + 1) % pages) * size;
+}
+
 function dotsHtml(total, visible, start) {
   if (total <= visible) return '';
   const pages = Math.max(1, Math.ceil(total / visible));
@@ -847,11 +889,9 @@ function renderNews() {
   const itemH = 132;
   const visible = howMany(el, itemH, 'news');
   if (!visible) { requestAnimationFrame(renderNews); return; }
-  const start = window.newsStart || 0;
+  const start = Math.floor((window.newsStart || 0) / visible) * visible;
+  window.newsStart = start;
   const slice = newsItems.slice(start, start + visible);
-  if (slice.length < visible && newsItems.length > visible) {
-    slice.push(...newsItems.slice(0, visible - slice.length));
-  }
   const outletLogos = {
     Fox: 'https://www.google.com/s2/favicons?domain=foxnews.com&sz=32',
     CNN: 'https://www.google.com/s2/favicons?domain=cnn.com&sz=32',
@@ -870,6 +910,7 @@ function renderNews() {
     </div>
     ${dotsHtml(newsItems.length, visible, start)}
   `;
+  bindThumbs(el);
   tightenIfOverflow(el, 'news', renderNews);
   clearInterval(rotationTimers.news);
   if (newsItems.length > visible) {
@@ -880,7 +921,7 @@ function renderNews() {
         container.style.opacity = '0.4';
       }
       setTimeout(() => {
-        window.newsStart = ((window.newsStart || 0) + Math.max(1, Math.floor(visible / 2))) % newsItems.length;
+        window.newsStart = nextPageStart(window.newsStart || 0, newsItems.length, visible);
         renderNews();
       }, 220);
     }, settings.rotationSeconds * 1000);
@@ -933,21 +974,23 @@ function renderLocalNews() {
   const itemH = 112;
   const visible = howMany(el, itemH, 'local');
   if (!visible) { requestAnimationFrame(renderLocalNews); return; }
-  const start = window.localStart || 0;
-  const slice = localNewsItems.slice(start, start + visible);
+  const start = Math.floor((window.localStart || 0) / visible) * visible;
+  window.localStart = start >= localNewsItems.length ? 0 : start;
+  const slice = localNewsItems.slice(window.localStart, window.localStart + visible);
   el.innerHTML = `<div class="items-scroller">${slice.map(item => `
     <div class="item news-item">
       ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
       <div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
         ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
-        <div class="meta">${item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</div>
+        <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''].filter(Boolean).join(' · ')}</div>
     </div>
   `).join('')}</div>${dotsHtml(localNewsItems.length, visible, start)}`;
+  bindThumbs(el);
   tightenIfOverflow(el, 'local', renderLocalNews);
   clearInterval(rotationTimers.local);
   if (localNewsItems.length > visible) {
     rotationTimers.local = setInterval(() => {
-      window.localStart = ((window.localStart || 0) + 1) % localNewsItems.length;
+      window.localStart = nextPageStart(window.localStart || 0, localNewsItems.length, visible);
       renderLocalNews();
     }, settings.rotationSeconds * 1000);
   }
@@ -1003,21 +1046,23 @@ function renderIntlNews() {
   const itemH = 112;
   const visible = howMany(el, itemH, 'intl');
   if (!visible) { requestAnimationFrame(renderIntlNews); return; }
-  const start = window.intlStart || 0;
-  const slice = intlNewsItems.slice(start, start + visible);
+  const start = Math.floor((window.intlStart || 0) / visible) * visible;
+  window.intlStart = start >= intlNewsItems.length ? 0 : start;
+  const slice = intlNewsItems.slice(window.intlStart, window.intlStart + visible);
   el.innerHTML = `<div class="items-scroller"><div class="meta" style="margin-bottom:0.4rem;font-weight:600;">${countryLabel}</div>${slice.map(item => `
     <div class="item news-item">
       ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
       <div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
         ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
-        <div class="meta">${item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</div>
+        <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''].filter(Boolean).join(' · ')}</div>
     </div>
   `).join('')}</div>${dotsHtml(intlNewsItems.length, visible, start)}`;
+  bindThumbs(el);
   tightenIfOverflow(el, 'intl', renderIntlNews);
   clearInterval(rotationTimers.intl);
   if (intlNewsItems.length > visible) {
     rotationTimers.intl = setInterval(() => {
-      window.intlStart = ((window.intlStart || 0) + 1) % intlNewsItems.length;
+      window.intlStart = nextPageStart(window.intlStart || 0, intlNewsItems.length, visible);
       renderIntlNews();
     }, settings.rotationSeconds * 1000);
   }
@@ -1940,7 +1985,7 @@ function clockFace(raw, compact) {
   const gid = String(c.tz || c.label || 'c').replace(/\W/g, '');
   const sunUi = (sun && sun.rise != null && sun.set != null) ? sunArc(sun, gid) : { svg: '', times: '', marker: '', night: false };
   const tone = sunUi.svg ? (sunUi.night ? 'night' : 'day') : '';
-  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="meta">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
+  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="clock-city">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
 }
 
 let techItems = [];
@@ -1963,6 +2008,12 @@ async function loadTech(quiet) {
   renderTech();
 }
 
+function techSource(story) {
+  if (!story.url) return 'Hacker News';
+  try { return new URL(story.url).hostname.replace(/^www\./, ''); }
+  catch (e) { return 'Hacker News'; }
+}
+
 function renderTech() {
   const el = document.getElementById('tech-content');
   if (!el) return;
@@ -1978,7 +2029,7 @@ function renderTech() {
   el.innerHTML = `<div class="items-scroller">${slice.map(s => `
     <div class="item">
       <a href="${s.url || 'https://news.ycombinator.com/item?id=' + s.id}" target="_blank" rel="noopener">${s.title}</a>
-      <div class="meta">${s.score || 0} points · ${s.descendants || 0} comments · ${s.time ? new Date(s.time * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</div>
+      <div class="meta">${techSource(s)} · ${s.score || 0} points · ${s.descendants || 0} comments · ${s.time ? new Date(s.time * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</div>
     </div>
   `).join('')}</div>${dotsHtml(techItems.length, visible, start)}`;
   tightenIfOverflow(el, 'tech', renderTech);
@@ -2024,6 +2075,7 @@ function renderHeadlines() {
     ${item.summary ? `<div class="headline-summary">${item.summary}</div>` : ''}
     <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')}</div>
   </div>${dotsHtml(headlineItems.length, 1, index)}`;
+  bindThumbs(el);
   clearInterval(rotationTimers.headlines);
   if (headlineItems.length > 1) {
     rotationTimers.headlines = setInterval(() => {
@@ -2146,6 +2198,20 @@ refreshAll();
 scheduleRefreshes();
 setInterval(renderClocks, 1000);
 
+function marketIsLive() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type)?.value || '';
+  if (get('weekday') === 'Sat' || get('weekday') === 'Sun') return false;
+  const mins = Number(get('hour')) * 60 + Number(get('minute'));
+  return mins >= 9 * 60 + 30 && mins < 17 * 60;
+}
+
 function scheduleRefreshes() {
   if (!window.widgetRefreshTimers) window.widgetRefreshTimers = {};
   Object.values(window.widgetRefreshTimers).forEach(clearInterval);
@@ -2157,6 +2223,7 @@ function scheduleRefreshes() {
     const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
     window.widgetRefreshTimers[key] = setInterval(() => {
       if (settings.widgets[key] && settings.widgets[key].visible === false) return;
+      if (key === 'stocks' && !marketIsLive()) return;
       fn(true);
     }, sec * 1000);
   });
