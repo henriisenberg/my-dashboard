@@ -26,6 +26,7 @@ body {
   flex-direction: column;
 }
 header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -35,8 +36,17 @@ header {
   flex-shrink: 0;
 }
 header h1 { margin: 0; font-size: 1.25rem; }
-#clock { font-variant-numeric: tabular-nums; opacity: 0.8; }
-#settings-btn, #download-btn {
+#clock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#settings-btn {
   background: var(--accent);
   color: white;
   border: none;
@@ -45,7 +55,6 @@ header h1 { margin: 0; font-size: 1.25rem; }
   cursor: pointer;
   font-size: 0.9rem;
 }
-#download-btn { margin-left: auto; margin-right: 0.4rem; background: #334155; }
 .dashboard {
   flex: 1;
   min-height: 0;
@@ -91,8 +100,7 @@ header h1 { margin: 0; font-size: 1.25rem; }
     gap: 0.35rem 0.6rem;
   }
   header h1 { font-size: 1.15rem; }
-  #clock { font-size: 0.8rem; }
-  #settings-btn { margin-left: 0; }
+  #clock { position: static; transform: none; width: 100%; font-size: 0.8rem; order: 3; }
 }
 .panel {
   background: var(--panel);
@@ -316,9 +324,8 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
 </head>
 <body>
 <header>
-  <h1>News Dashboard <span style="font-size:0.7rem;opacity:0.6;background:#3b82f6;color:white;padding:0.1rem 0.4rem;border-radius:4px">(v56)</span></h1>
+  <h1>News Dashboard</h1>
   <div id="clock"></div>
-  <button id="download-btn">Download index.html</button>
   <button id="settings-btn">⚙️ Settings</button>
 </header>
 <main class="dashboard" id="dashboard">
@@ -359,11 +366,11 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v57 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
-    <h2>Settings <span style="font-size:0.75rem;opacity:0.6">(v56)</span></h2>
+    <h2>Settings</h2>
     <div class="settings-tabs">
       <button type="button" class="tab on" data-tab="layout">Layout</button>
       <button type="button" class="tab" data-tab="feeds">Feeds</button>
@@ -717,7 +724,7 @@ function saveSettings() {
 function updateClock() {
   const now = new Date();
   document.getElementById('clock').textContent = now.toLocaleString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
   });
   if (typeof renderClocks === 'function') renderClocks();
 }
@@ -2027,38 +2034,6 @@ async function refreshAll() {
 }
 
 document.getElementById('settings-btn').addEventListener('click', openSettings);
-document.getElementById('download-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('download-btn');
-  btn.textContent = 'Downloading…';
-  try {
-    const res = await fetch(location.href, { cache: 'no-store' });
-    const text = await res.text();
-    if (window.showSaveFilePicker) {
-      const handle = await showSaveFilePicker({
-        suggestedName: 'index.html',
-        types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(text);
-      await writable.close();
-      btn.textContent = 'Saved';
-    } else {
-      const blob = new Blob([text], { type: 'text/html' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'index.html';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      btn.textContent = 'Check browser Downloads';
-    }
-  } catch (e) {
-    if (e && e.name === 'AbortError') btn.textContent = 'Download index.html';
-    else btn.textContent = 'Download failed';
-  }
-  setTimeout(() => { btn.textContent = 'Download index.html'; }, 2500);
-});
 let dragRow = null;
 function clearDropMarks() {
   document.querySelectorAll('#widget-settings .drop-before, #widget-settings .drop-after').forEach(el => {
