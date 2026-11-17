@@ -366,7 +366,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v57 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v58 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -1812,23 +1812,28 @@ function zoneParts(tz, date) {
   return { h: +parts.hour, m: +parts.minute, s: +parts.second, day: parts.weekday };
 }
 
-function analogSVG(h, m, s) {
+function analogSVG(h, m, s, day) {
   const rad = (deg) => (deg - 90) * Math.PI / 180;
+  const face = day ? '#f8fafc' : '#0f172a';
+  const rim = day ? '#cbd5e1' : '#334155';
+  const mark = day ? '#334155' : '#94a3b8';
+  const handColor = day ? '#0f172a' : '#e2e8f0';
+  const hub = day ? '#0f172a' : '#f8fafc';
   const hand = (deg, len, width, color) => {
     const a = rad(deg);
     return `<line x1="50" y1="50" x2="${(50 + Math.cos(a) * len).toFixed(1)}" y2="${(50 + Math.sin(a) * len).toFixed(1)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
   };
   return `<svg class="analog" viewBox="0 0 100 100" aria-hidden="true">
-    <circle cx="50" cy="50" r="46" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+    <circle cx="50" cy="50" r="46" fill="${face}" stroke="${rim}" stroke-width="3"/>
     ${Array.from({length:12}, (_,i) => {
       const a = rad(i * 30);
       const inner = i % 3 === 0 ? 34 : 38;
-      return `<line x1="${(50+Math.cos(a)*inner).toFixed(1)}" y1="${(50+Math.sin(a)*inner).toFixed(1)}" x2="${(50+Math.cos(a)*44).toFixed(1)}" y2="${(50+Math.sin(a)*44).toFixed(1)}" stroke="#94a3b8" stroke-width="${i%3===0?2:1}"/>`;
+      return `<line x1="${(50+Math.cos(a)*inner).toFixed(1)}" y1="${(50+Math.sin(a)*inner).toFixed(1)}" x2="${(50+Math.cos(a)*44).toFixed(1)}" y2="${(50+Math.sin(a)*44).toFixed(1)}" stroke="${mark}" stroke-width="${i%3===0?2:1}"/>`;
     }).join('')}
-    ${hand(((h % 12) + m / 60) * 30, 24, 3.2, '#e2e8f0')}
-    ${hand(m * 6 + s * 0.1, 32, 2, '#e2e8f0')}
+    ${hand(((h % 12) + m / 60) * 30, 24, 3.2, handColor)}
+    ${hand(m * 6 + s * 0.1, 32, 2, handColor)}
     ${hand(s * 6, 36, 1, '#f87171')}
-    <circle cx="50" cy="50" r="2.4" fill="#f8fafc"/>
+    <circle cx="50" cy="50" r="2.4" fill="${hub}"/>
   </svg>`;
 }
 
@@ -1935,7 +1940,7 @@ function clockFace(raw, compact) {
   const gid = String(c.tz || c.label || 'c').replace(/\W/g, '');
   const sunUi = (sun && sun.rise != null && sun.set != null) ? sunArc(sun, gid) : { svg: '', times: '', marker: '', night: false };
   const tone = sunUi.svg ? (sunUi.night ? 'night' : 'day') : '';
-  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="meta">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s)}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
+  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="meta">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
 }
 
 let techItems = [];
