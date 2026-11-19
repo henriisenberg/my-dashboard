@@ -307,6 +307,7 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .clock-meta { min-width: 0; flex: 1 1 auto; text-align: left; align-self: flex-start; }
 .clock-meta .meta { opacity: 0.92; }
 .clock-city { font-size: 1.05rem; font-weight: 700; line-height: 1.15; }
+.clock-date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; line-height: 1.25; margin-top: 0.12rem; }
 .clock-grid.compact .clock-city { font-size: 0.95rem; }
 .analog { width: 54px; height: 54px; min-width: 54px; max-width: 54px; display: block; flex: 0 0 54px; margin-left: auto; position: relative; z-index: 1; }
 .clock-time { position: absolute; left: 50%; top: calc(66% - 0.2rem); transform: translate(-50%, -50%); margin: 0; z-index: 1; text-align: center; font-size: 2.25rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }
@@ -402,7 +403,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v81 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v82 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -2109,7 +2110,7 @@ function clockFace(raw, compact) {
   const gid = String(c.tz || c.label || 'c').replace(/\W/g, '');
   const sunUi = (sun && sun.rise != null && sun.set != null) ? sunArc(sun, gid) : { svg: '', times: '', marker: '', night: false };
   const tone = sunUi.svg ? (sunUi.night ? 'night' : 'day') : '';
-  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="clock-city">${c.label}</div>${compact ? '' : `<div class="meta">${dateLine}</div>`}</div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
+  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="clock-city">${c.label}</div><div class="meta clock-date">${dateLine}</div></div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
 }
 
 let techItems = [];
