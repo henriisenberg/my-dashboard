@@ -353,7 +353,8 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .clock-grid.compact .clock-time { font-size: 1.7rem; }
 #clocks-content { overflow: hidden; }
 .sun-marker { position: absolute; z-index: 1; width: 14px; height: 14px; margin: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #fffbeb; box-shadow: 0 0 12px 5px rgba(251,191,36,0.55); }
-.sun-marker.moon { background: #e8eef9; box-shadow: 0 0 10px 4px rgba(226,232,240,0.4); }
+.sun-marker.phase { width: 26px; height: 26px; background: transparent; box-shadow: none; border-radius: 0; }
+.sun-marker.phase .moon-disk { width: 26px; height: 26px; }
 .sun-marker.moon::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #121a2b; left: 5px; top: -2px; }
 .moon-disk { width: 64px; height: 64px; flex-shrink: 0; display: block; }
 .moon-row { display: flex; align-items: center; gap: 0.7rem; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 0.35rem 0.55rem; }
@@ -437,7 +438,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v87 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v89 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -537,7 +538,7 @@ const defaultSettings = {
   categories: ['politics', 'tech', 'business'],
   sportsLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
   favoriteTeams: [],
-  restLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
+  restLeagues: [],
   weatherLocation: 'Los Angeles',
   localNewsLocation: '',
   intlCountry: 'US',
@@ -753,6 +754,39 @@ const TEAMS = {
   mls: [["ATL","Atlanta"],["ATX","Austin"],["MTL","CF Montr\u00e9al"],["CLT","Charlotte"],["CHI","Chicago"],["CIN","Cincinnati"],["COL","Colorado"],["CLB","Columbus"],["DC","D.C. United"],["DAL","Dallas"],["HOU","Houston"],["SKC","Kansas City"],["LA","LA Galaxy"],["LAFC","LAFC"],["MIA","Miami"],["MIN","Minnesota"],["NSH","Nashville"],["NE","New England"],["NYC","NYCFC"],["ORL","Orlando"],["PHI","Philadelphia"],["POR","Portland"],["RBNY","Red Bull NY"],["RSL","Salt Lake"],["SD","San Diego"],["SJ","San Jose"],["SEA","Seattle"],["STL","St. Louis"],["TOR","Toronto"],["VAN","Vancouver"]]
 };
 
+const HOME_TEAMS = {
+  'America/Los_Angeles': { nfl:['LAR','LAC'], nba:['LAL','LAC'], mlb:['LAD','LAA'], nhl:['LA'], mls:['LA','LAFC'], ncaaf:['USC','UCLA'], ncaab:['USC','UCLA'] },
+  'America/Phoenix': { nfl:['ARI'], nba:['PHX'], mlb:['ARI'], ncaaf:['ASU'], ncaab:['ASU'] },
+  'America/Denver': { nfl:['DEN'], nba:['DEN'], mlb:['COL'], nhl:['COL'], mls:['COL'], ncaaf:['COLO'], ncaab:['COLO'] },
+  'America/Chicago': { nfl:['CHI'], nba:['CHI'], mlb:['CHC','CWS'], nhl:['CHI'], mls:['CHI'], ncaaf:['NU'], ncaab:['NU'] },
+  'America/New_York': { nfl:['NYG','NYJ'], nba:['NYK','BKN'], mlb:['NYY','NYM'], nhl:['NYR','NYI','NJ'], mls:['NYC','RBNY'], ncaaf:['RUTG'], ncaab:['SJU'] },
+  'America/Detroit': { nfl:['DET'], nba:['DET'], mlb:['DET'], nhl:['DET'], ncaaf:['MICH','MSU'], ncaab:['MICH','MSU'] },
+  'America/Indiana/Indianapolis': { nfl:['IND'], nba:['IND'], ncaaf:['IU','PUR'], ncaab:['IU','PUR'] },
+  'America/Toronto': { nba:['TOR'], mlb:['TOR'], nhl:['TOR'], mls:['TOR'] },
+  'America/Vancouver': { nhl:['VAN'], mls:['VAN'] },
+  'America/Edmonton': { nhl:['EDM'] },
+  'America/Winnipeg': { nhl:['WPG'] },
+  'America/Montreal': { nhl:['MTL'], mls:['MTL'] }
+};
+
+function defaultFavoriteTeams() {
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  const local = HOME_TEAMS[tz] || {};
+  const favs = [];
+  for (const lg of ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab']) {
+    const wanted = local[lg] && local[lg].length ? local[lg] : [TEAMS[lg][0][0]];
+    for (const abbr of wanted) {
+      const found = (TEAMS[lg] || []).find(t => t[0] === abbr);
+      if (found) favs.push({ league: lg, abbr: found[0], name: found[1] });
+    }
+    if (!favs.some(f => f.league === lg) && TEAMS[lg] && TEAMS[lg][0]) {
+      favs.push({ league: lg, abbr: TEAMS[lg][0][0], name: TEAMS[lg][0][1] });
+    }
+  }
+  return favs;
+}
+
 let teamPick = new Set();
 let clockPick = [];
 let leagueOn = new Set();
@@ -791,10 +825,15 @@ function loadSettings() {
     settings.stockListVersion = 1;
     saveSettings();
   }
-  if (!Array.isArray(settings.restLeagues)) {
-    const all = ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'];
-    settings.restLeagues = settings.includeRestOfLeague === false ? [] : all;
+  if ((settings.teamDefaultVersion || 0) < 1) {
+    if (!Array.isArray(settings.favoriteTeams) || !settings.favoriteTeams.length) {
+      settings.favoriteTeams = defaultFavoriteTeams();
+      settings.restLeagues = [];
+    }
+    settings.teamDefaultVersion = 1;
+    saveSettings();
   }
+  if (!Array.isArray(settings.restLeagues)) settings.restLeagues = [];
 }
 
 function saveSettings() {
@@ -1576,7 +1615,8 @@ function moonInfo(date, apiPhase) {
   return { name: hit[1], icon: hit[2], illum, frac };
 }
 
-function moonDiskSVG(frac) {
+function moonDiskSVG(frac, uid) {
+  const id = uid || 'wx';
   const phase = ((frac % 1) + 1) % 1;
   const cx = 36, cy = 36, R = 28;
   const ratio = Math.cos(phase * 2 * Math.PI);
@@ -1587,18 +1627,18 @@ function moonDiskSVG(frac) {
   const lit = `M ${cx} ${cy - R} A ${R} ${R} 0 0 ${outerSweep} ${cx} ${cy + R} A ${e.toFixed(2)} ${R} 0 0 ${termSweep} ${cx} ${cy - R} Z`;
   return `<svg class="moon-disk" viewBox="0 0 72 72" aria-hidden="true">
     <defs>
-      <radialGradient id="moonbody" cx="36%" cy="32%" r="70%">
+      <radialGradient id="moonbody-${id}" cx="36%" cy="32%" r="70%">
         <stop offset="0" stop-color="#fffdf8"/>
         <stop offset="0.55" stop-color="#e6e0d2"/>
         <stop offset="1" stop-color="#b9b3a6"/>
       </radialGradient>
-      <clipPath id="moonlit"><path d="${lit}"/></clipPath>
-      <filter id="moonglow"><feGaussianBlur stdDeviation="1.6"/></filter>
+      <clipPath id="moonlit-${id}"><path d="${lit}"/></clipPath>
+      <filter id="moonglow-${id}"><feGaussianBlur stdDeviation="1.6"/></filter>
     </defs>
-    <circle cx="36" cy="36" r="30" fill="rgba(248,250,252,0.08)" filter="url(#moonglow)"/>
+    <circle cx="36" cy="36" r="30" fill="rgba(248,250,252,0.08)" filter="url(#moonglow-${id})"/>
     <circle cx="36" cy="36" r="28" fill="#0b1220"/>
-    <g clip-path="url(#moonlit)">
-      <circle cx="36" cy="36" r="28" fill="url(#moonbody)"/>
+    <g clip-path="url(#moonlit-${id})">
+      <circle cx="36" cy="36" r="28" fill="url(#moonbody-${id})"/>
       <circle cx="26" cy="28" r="5" fill="rgba(90,84,74,0.28)"/>
       <circle cx="40" cy="42" r="3.5" fill="rgba(90,84,74,0.22)"/>
       <circle cx="44" cy="26" r="2.2" fill="rgba(90,84,74,0.2)"/>
@@ -2175,7 +2215,10 @@ function sunArc(sun, id) {
   const sy = base - Math.sin(t * Math.PI) * amp;
   const skyTop = night ? '#121a2b' : '#1d4e89';
   const skyBot = night ? '#0b1020' : '#12345f';
-  const marker = `<div class="sun-marker${night ? ' moon' : ''}" style="left:${(sx / 300 * 100).toFixed(2)}%;top:${(sy / 180 * 100).toFixed(2)}%"></div>`;
+  const phaseId = String(id || 'arc').replace(/\W/g, '');
+  const marker = night
+    ? `<div class="sun-marker phase" style="left:${(sx / 300 * 100).toFixed(2)}%;top:${(sy / 180 * 100).toFixed(2)}%">${moonDiskSVG(moonInfo(new Date()).frac, 'arc' + phaseId)}</div>`
+    : `<div class="sun-marker" style="left:${(sx / 300 * 100).toFixed(2)}%;top:${(sy / 180 * 100).toFixed(2)}%"></div>`;
   const leftName = night ? 'Sunset' : 'Sunrise';
   const rightName = night ? 'Sunrise' : 'Sunset';
   const leftWhen = fmtMin(night ? set : rise);
