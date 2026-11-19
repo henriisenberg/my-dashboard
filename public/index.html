@@ -151,14 +151,48 @@ header h1 { margin: 0; font-size: 1.25rem; }
   line-height: 0;
 }
 .rot-dots .dot {
+  appearance: none;
+  position: relative;
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.rot-dots .dot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #64748b;
-  margin: 0 3px;
+  pointer-events: none;
 }
-.rot-dots .dot.on { background: #3b82f6; }
+.rot-dots .dot.on::after {
+  width: 15px;
+  height: 15px;
+  background:
+    radial-gradient(circle at center, var(--panel) 0 5px, transparent 5.5px),
+    conic-gradient(#60a5fa var(--rot-p, 0%), rgba(148, 163, 184, 0.35) 0);
+  animation: rot-count var(--rot-ms, 10s) linear forwards;
+}
+@property --rot-p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+@keyframes rot-count {
+  from { --rot-p: 0%; }
+  to { --rot-p: 100%; }
+}
 .item {
   padding: 0.45rem 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -403,7 +437,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v82 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v87 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -513,7 +547,7 @@ const defaultSettings = {
     { label: 'London', tz: 'Europe/London', lat: 51.51, lon: -0.13 },
     { label: 'Tokyo', tz: 'Asia/Tokyo', lat: 35.68, lon: 139.69 }
   ],
-  stocks: ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','SPY','QQQ','DIA','^GSPC','^DJI','^IXIC','SPCX'],
+  stocks: ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','ANT','SPY','QQQ','DIA','^GSPC','^DJI','^IXIC','SPCX'],
   rotationSeconds: 10,
   maxNewsAgeHours: 24,
   widgets: {
@@ -751,6 +785,12 @@ function loadSettings() {
     settings.leagueCatalogVersion = 3;
     saveSettings();
   }
+  if ((settings.stockListVersion || 0) < 1) {
+    settings.stocks = Array.isArray(settings.stocks) ? settings.stocks : defaultSettings.stocks.slice();
+    if (!settings.stocks.some(s => String(s).toUpperCase() === 'ANT')) settings.stocks.push('ANT');
+    settings.stockListVersion = 1;
+    saveSettings();
+  }
   if (!Array.isArray(settings.restLeagues)) {
     const all = ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'];
     settings.restLeagues = settings.includeRestOfLeague === false ? [] : all;
@@ -898,13 +938,35 @@ function nextPageStart(start, total, visible) {
   return ((current + 1) % pages) * size;
 }
 
-function dotsHtml(total, visible, start) {
+function dotsHtml(total, visible, start, key) {
   if (total <= visible) return '';
   const pages = Math.max(1, Math.ceil(total / visible));
   const current = Math.floor(start / visible) % pages;
-  const dots = Array.from({ length: pages }, (_, i) =>
-    `<span class="dot${i === current ? ' on' : ''}"></span>`).join('');
+  const ms = (settings.rotationSeconds || 10) * 1000;
+  const dots = Array.from({ length: pages }, (_, i) => {
+    const at = i * visible;
+    const on = i === current;
+    return `<button type="button" class="dot${on ? ' on' : ''}" data-rot="${key}" data-start="${at}" onclick="jumpRotation('${key}', ${at})"${on ? ` style="--rot-ms:${ms}ms" aria-current="true"` : ''} aria-label="Page ${i + 1}"></button>`;
+  }).join('');
   return `<div class="rot-dots">${dots}</div>`;
+}
+
+function jumpRotation(key, start) {
+  const at = Number(start) || 0;
+  clearInterval(rotationTimers[key]);
+  clearTimeout(rotationTimers[key + 'Wait']);
+  const go = {
+    news: () => { window.newsStart = at; renderNews(); },
+    local: () => { window.localStart = at; renderLocalNews(); },
+    intl: () => { window.intlStart = at; renderIntlNews(); },
+    sports: () => { window.sportsStart = at; renderSports(); },
+    stocks: () => { window.stocksStart = at; renderStocks(); },
+    clocks: () => { window.clocksStart = at; renderClocks(); },
+    tech: () => { window.techStart = at; renderTech(); },
+    headlines: () => { window.headlineStart = at; renderHeadlines(); },
+    markets: () => { window.marketsStart = at; renderMarkets(); }
+  };
+  if (go[key]) go[key]();
 }
 
 function howMany(el, itemH, key) {
@@ -963,12 +1025,13 @@ function renderNews() {
         </div>
       `).join('')}
     </div>
-    ${dotsHtml(newsItems.length, visible, start)}
+    ${dotsHtml(newsItems.length, visible, start, 'news')}
   `;
   el._refit = () => tightenIfOverflow(el, 'news', renderNews);
   bindThumbs(el);
   tightenIfOverflow(el, 'news', renderNews);
   clearInterval(rotationTimers.news);
+  clearTimeout(rotationTimers.newsWait);
   if (newsItems.length > visible) {
     rotationTimers.news = setInterval(() => {
       const container = el.querySelector('.slide-container');
@@ -976,7 +1039,7 @@ function renderNews() {
         container.style.transform = 'translateX(-8px)';
         container.style.opacity = '0.4';
       }
-      setTimeout(() => {
+      rotationTimers.newsWait = setTimeout(() => {
         window.newsStart = nextPageStart(window.newsStart || 0, newsItems.length, visible);
         renderNews();
       }, 220);
@@ -1040,7 +1103,7 @@ function renderLocalNews() {
         ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
         <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''].filter(Boolean).join(' · ')}</div>
     </div>
-  `).join('')}</div>${dotsHtml(localNewsItems.length, visible, start)}`;
+  `).join('')}</div>${dotsHtml(localNewsItems.length, visible, start, 'local')}`;
   el._refit = () => tightenIfOverflow(el, 'local', renderLocalNews);
   bindThumbs(el);
   tightenIfOverflow(el, 'local', renderLocalNews);
@@ -1113,7 +1176,7 @@ function renderIntlNews() {
         ${item.summary ? `<div class="meta">${item.summary.slice(0, 90)}…</div>` : ''}
         <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''].filter(Boolean).join(' · ')}</div>
     </div>
-  `).join('')}</div>${dotsHtml(intlNewsItems.length, visible, start)}`;
+  `).join('')}</div>${dotsHtml(intlNewsItems.length, visible, start, 'intl')}`;
   el._refit = () => tightenIfOverflow(el, 'intl', renderIntlNews);
   bindThumbs(el);
   tightenIfOverflow(el, 'intl', renderIntlNews);
@@ -1322,14 +1385,15 @@ function renderSports() {
         ${g.isLive ? '🔴 LIVE · ' : (g.isUpcoming ? 'NEXT · ' : '')}${g.league}<br>${g.statusDetail || g.status}
       </div>
     </div>
-  `).join('')}</div>${dotsHtml(pages.length, 1, page)}`;
+  `).join('')}</div>${dotsHtml(pages.length, 1, page, 'sports')}`;
   tightenIfOverflow(el, 'sports', renderSports);
   clearInterval(rotationTimers.sports);
+  clearTimeout(rotationTimers.sportsWait);
   if (pages.length > 1) {
     rotationTimers.sports = setInterval(() => {
       const el = document.getElementById('sports-content');
       el.classList.add('fading');
-      setTimeout(() => {
+      rotationTimers.sportsWait = setTimeout(() => {
         window.sportsStart = ((window.sportsStart || 0) + 1) % pages.length;
         renderSports();
         el.classList.remove('fading');
@@ -1365,10 +1429,22 @@ async function loadWeather(quiet) {
       }
     }
     const controller2 = new AbortController();
-    const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
-    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=7&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: controller2.signal });
+    const timeoutId2 = setTimeout(() => controller2.abort(), 12000);
+    let wRes;
+    try {
+      wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=7&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: controller2.signal });
+    } catch (e) {
+      clearTimeout(timeoutId2);
+      const retry = new AbortController();
+      const retryTimer = setTimeout(() => retry.abort(), 12000);
+      try {
+        wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=7&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: retry.signal });
+      } finally {
+        clearTimeout(retryTimer);
+      }
+    }
     clearTimeout(timeoutId2);
-    if (!wRes.ok) throw new Error('Weather API error ' + wRes.status);
+    if (!wRes.ok) throw new Error(wRes.status === 429 ? 'rate limit' : 'Weather API error ' + wRes.status);
     const w = await wRes.json();
     const [aqi, alerts] = await Promise.all([
       fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -1387,18 +1463,39 @@ async function loadWeather(quiet) {
     renderWeather();
   } catch (e) {
     console.warn('Weather load error:', e);
-    content.innerHTML = `<div class="error">Weather slow/unavailable (${e.message || 'timeout'}). Showing fallback.</div>`;
-    weatherData = {
-      current: { temperature_2m: 72, relative_humidity_2m: 50, weather_code: 1, wind_speed_10m: 5 },
-      hourly: { time: [], temperature_2m: [], weather_code: [] },
-      daily: { time: ['2026-11-16','2026-11-17','2026-11-18','2026-11-19','2026-11-20'], temperature_2m_max: [75,74,73,72,71], temperature_2m_min: [58,57,56,55,54], weather_code: [1,2,1,0,1], sunrise: ['2026-11-16T06:28'], sunset: ['2026-11-16T16:52'] },
-      location: 'Los Angeles, US',
-      aqi: null,
-      alerts: [],
-      fallback: true
-    };
+    weatherData = sampleWeather(`${name}, ${country}`, e.message || 'timeout');
     renderWeather();
   }
+}
+
+function sampleWeather(location, reason) {
+  const time = [];
+  const max = [];
+  const min = [];
+  const code = [];
+  const sunrise = [];
+  const sunset = [];
+  const now = new Date();
+  for (let i = 0; i < 5; i++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    time.push(iso);
+    max.push(75 - i);
+    min.push(58 - i);
+    code.push(i % 2 ? 2 : 1);
+    sunrise.push(`${iso}T06:28`);
+    sunset.push(`${iso}T16:52`);
+  }
+  return {
+    current: { temperature_2m: 72, relative_humidity_2m: 50, weather_code: 1, wind_speed_10m: 5 },
+    hourly: { time: [], temperature_2m: [], weather_code: [] },
+    daily: { time, temperature_2m_max: max, temperature_2m_min: min, weather_code: code, sunrise, sunset, moon_phase: [0.5] },
+    location,
+    timezone: undefined,
+    aqi: null,
+    alerts: [],
+    fallback: reason || true
+  };
 }
 
 function isoMinutes(iso) {
@@ -1554,7 +1651,7 @@ function renderWeather() {
     <div class="wx-main">
     <div style="text-align:center; margin-bottom:0.35rem;">
       <div class="weather-main">${Math.round(c.temperature_2m)}${unit} ${weatherCodeToIcon(c.weather_code)}</div>
-      <div style="font-size:0.95rem; opacity:0.9;">${weatherCodeToText(c.weather_code)} · ${weatherData.location}${weatherData.fallback ? ' (fallback)' : ''}</div>
+      <div style="font-size:0.95rem; opacity:0.9;">${weatherCodeToText(c.weather_code)} · ${weatherData.location}${weatherData.fallback ? ` (sample${typeof weatherData.fallback === 'string' ? ': ' + weatherData.fallback : ''})` : ''}</div>
       <div class="meta">Humidity ${c.relative_humidity_2m}%</div>
     </div>
     <div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.35rem 0 0.25rem;">Next Hours</div>
@@ -1701,14 +1798,15 @@ function renderStocks() {
       <span class="${cls}"> ${sign}${s.change.toFixed(2)} (${sign}${s.pct.toFixed(2)}%)</span></div>
       ${spark}
     </div>`;
-  }).join('')}</div>${dotsHtml(stockItems.length, visible, start)}`;
+  }).join('')}</div>${dotsHtml(stockItems.length, visible, start, 'stocks')}`;
   tightenIfOverflow(el, 'stocks', renderStocks);
   clearInterval(rotationTimers.stocks);
+  clearTimeout(rotationTimers.stocksWait);
   if (stockItems.length > visible) {
     rotationTimers.stocks = setInterval(() => {
       const el = document.getElementById('stocks-content');
       el.classList.add('fading');
-      setTimeout(() => {
+      rotationTimers.stocksWait = setTimeout(() => {
         window.stocksStart = ((window.stocksStart || 0) + 1) % stockItems.length;
         renderStocks();
         el.classList.remove('fading');
@@ -1924,7 +2022,7 @@ function renderClocks() {
   const start = (window.clocksStart || 0) % clocks.length;
   const slice = [];
   for (let i = 0; i < visible; i++) slice.push(clocks[(start + i) % clocks.length]);
-  el.innerHTML = `<div class="items-scroller"><div class="clock-grid${compact ? ' compact' : ''}">${slice.map(c => clockFace(c, compact)).join('')}</div></div>${dotsHtml(clocks.length, visible, start)}`;
+  el.innerHTML = `<div class="items-scroller"><div class="clock-grid${compact ? ' compact' : ''}">${slice.map(c => clockFace(c, compact)).join('')}</div></div>${dotsHtml(clocks.length, visible, start, 'clocks')}`;
   tightenIfOverflow(el, 'clocks', renderClocks);
   const sec = settings.rotationSeconds || 10;
   if (window.clocksVisible !== visible || window.clocksRotateSec !== sec) {
@@ -2156,7 +2254,7 @@ function renderTech() {
       <a href="${s.url || 'https://news.ycombinator.com/item?id=' + s.id}" target="_blank" rel="noopener">${s.title}</a>
       <div class="meta">${techSource(s)} · ${s.score || 0} points · ${s.descendants || 0} comments · ${s.time ? new Date(s.time * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</div>
     </div>
-  `).join('')}</div>${dotsHtml(techItems.length, visible, start)}`;
+  `).join('')}</div>${dotsHtml(techItems.length, visible, start, 'tech')}`;
   tightenIfOverflow(el, 'tech', renderTech);
   clearInterval(rotationTimers.tech);
   if (techItems.length > visible) {
@@ -2201,7 +2299,7 @@ function renderHeadlines() {
       ${item.summary ? `<div class="headline-summary">${item.summary}</div>` : ''}
       <div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')}</div>
     </div>
-  </div>${dotsHtml(headlineItems.length, 1, index)}`;
+  </div>${dotsHtml(headlineItems.length, 1, index, 'headlines')}`;
   bindThumbs(el);
   clearInterval(rotationTimers.headlines);
   if (headlineItems.length > 1) {
@@ -2313,7 +2411,7 @@ function renderMarkets() {
       return `${kick}<div class="item earn-row"><div>${item.owned ? '<span class="earn-badge"></span>' : ''}<strong>${item.symbol}</strong> ${dayLabel(item.date)} · ${sessionLabel(item.time)}${est}<div class="meta">${item.name || ''}</div></div></div>`;
     }
     return `${kick}<div class="item news-item"><div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>${item.summary ? `<div class="meta">${item.summary.slice(0, 110)}${item.summary.length >= 110 ? '…' : ''}</div>` : ''}<div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')}</div></div>`;
-  }).join('')}</div>${marketItems.some(item => item.owned) ? '<div class="earn-legend"><span class="earn-badge"></span>On Your List</div>' : ''}${dotsHtml(marketItems.length, visible, window.marketsStart)}`;
+  }).join('')}</div>${marketItems.some(item => item.owned) ? '<div class="earn-legend"><span class="earn-badge"></span>On Your List</div>' : ''}${dotsHtml(marketItems.length, visible, window.marketsStart, 'markets')}`;
   el._refit = () => tightenIfOverflow(el, 'markets', renderMarkets);
   tightenIfOverflow(el, 'markets', renderMarkets);
   clearInterval(rotationTimers.markets);
@@ -2335,6 +2433,12 @@ async function refreshAll(opts) {
   ]);
 }
 
+document.addEventListener('click', e => {
+  const dot = e.target.closest && e.target.closest('.rot-dots .dot');
+  if (!dot) return;
+  e.preventDefault();
+  jumpRotation(dot.dataset.rot, dot.dataset.start);
+});
 document.getElementById('settings-btn').addEventListener('click', openSettings);
 let dragRow = null;
 function clearDropMarks() {
