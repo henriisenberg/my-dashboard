@@ -169,13 +169,15 @@ header h1 { margin: 0; font-size: 1.25rem; }
 .item:last-child { border-bottom: none; }
 .item a { color: #93c5fd; text-decoration: none; overflow-wrap: anywhere; }
 .item a:hover { text-decoration: underline; }
-.news-item { display: block; }
-.news-thumb { float: left; width: 116px; height: 82px; object-fit: cover; border-radius: 6px; margin: 0.05rem 0.7rem 0.3rem 0; }
+.news-item { display: block; min-height: 132px; }
+.news-thumb { float: left; width: 176px; height: 124px; object-fit: cover; border-radius: 6px; margin: 0.05rem 0.75rem 0.4rem 0; }
 img.thumb-wait { visibility: hidden; }
 .news-headline { font-size: 1.08rem; font-weight: 700; line-height: 1.28; }
 .news-headline img { width: 16px; height: 16px; vertical-align: -2px; margin-right: 0.28rem; }
 .news-headline a { font-weight: 700; }
-.stock-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: nowrap; overflow: hidden; }
+.earn-row { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
+.earn-badge { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #60a5fa; margin-right: 0.35rem; vertical-align: 1px; }
+.earn-legend { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.15rem; font-size: 0.68rem; opacity: 0.85; padding-top: 0.28rem; }
 .stock-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spark { flex: 0 1 38%; width: 38%; min-width: 0; max-width: 42%; height: 28px; display: block; }
 .meta { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; overflow-wrap: anywhere; }
@@ -291,7 +293,7 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 #weather-content::-webkit-scrollbar { width: 0; height: 0; }
 #weather-content:hover { scrollbar-width: thin; }
 #weather-content:hover::-webkit-scrollbar { width: 8px; height: 8px; }
-.wx-hours, .wx-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.25rem; width: 100%; }
+.wx-hours, .wx-days { display: grid; grid-template-columns: repeat(5, minmax(44px, 1fr)); gap: 0.25rem; width: 100%; }
 .wx-hours .wx-card, .wx-days .wx-card { min-width: 0; padding: 0.28rem 0.05rem; }
 .clock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; align-content: start; }
 @container widget (min-height: 520px) {
@@ -319,11 +321,19 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .sun-marker.moon { background: #e8eef9; box-shadow: 0 0 10px 4px rgba(226,232,240,0.4); }
 .sun-marker.moon::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #121a2b; left: 5px; top: -2px; }
 .moon-disk { width: 64px; height: 64px; flex-shrink: 0; display: block; }
-.moon-row { display: flex; align-items: center; gap: 0.7rem; margin-top: 0.4rem; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 0.35rem 0.55rem; }
-.wx-sun { position: relative; height: 96px; margin-top: 0.45rem; border-radius: 10px; overflow: hidden; background: #12345f; }
+.moon-row { display: flex; align-items: center; gap: 0.7rem; background: rgba(255,255,255,0.06); border-radius: 10px; padding: 0.35rem 0.55rem; }
+.wx-sun { position: relative; height: 96px; min-height: 96px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: #12345f; }
 .wx-sun.night { background: #0b1020; }
-.wx-sun .sun-stage { bottom: 1.65rem; }
-.wx-sun .sun-times { font-size: 0.72rem; left: 0.5rem; right: 0.5rem; bottom: 0.22rem; }
+.wx-sun .sun-stage { bottom: 2.35rem; }
+.wx-sun .sun-times { font-size: 0.72rem; left: 0.5rem; right: 0.5rem; bottom: 0.3rem; }
+.wx-foot { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: stretch; }
+.wx-foot .wx-sun, .wx-foot .moon-row { flex: 1 1 180px; min-width: 0; margin: 0; }
+.wx-layout { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.65rem 0.85rem; min-width: 0; }
+.wx-main { flex: 1 1 250px; min-width: min(100%, 230px); }
+.wx-side { flex: 1 1 190px; min-width: min(100%, 180px); display: flex; flex-direction: column; gap: 0.4rem; }
+.wx-side .wx-foot { flex-direction: column; }
+.wx-side .wx-sun, .wx-side .moon-row { flex: none; width: 100%; }
+.wx-alerts .item { overflow: visible; }
 .headline-summary { display: none; }
 @container widget (min-height: 340px) {
   .headline-summary { display: block; overflow: hidden; max-height: 38%; margin-top: 0.35rem; font-size: 0.92rem; line-height: 1.35; opacity: 0.92; }
@@ -375,6 +385,10 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <h2>📈 Stocks</h2>
     <div class="panel-content" id="stocks-content"><div class="loading">Loading stocks…</div></div>
   </section>
+  <section class="panel" id="markets-panel">
+    <h2>💼 Business</h2>
+    <div class="panel-content" id="markets-content"><div class="loading">Loading markets…</div></div>
+  </section>
   <section class="panel" id="clocks-panel">
     <h2>🕐 World Clocks</h2>
     <div class="panel-content" id="clocks-content"><div class="loading">Loading clocks…</div></div>
@@ -388,7 +402,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
 </main>
-<footer>v71 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Sports via ESPN · News via publisher RSS</footer>
+<footer>v81 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -508,6 +522,7 @@ const defaultSettings = {
     sports: { visible: true, size: '1x1' },
     weather: { visible: true, size: '1x1' },
     stocks: { visible: true, size: '1x1' },
+    markets: { visible: true, size: '1x2' },
     clocks: { visible: true, size: '1x1' },
     tech: { visible: true, size: '1x1' },
     headlines: { visible: true, size: '2x1' }
@@ -522,6 +537,7 @@ const WIDGET_IDS = {
   sports: ['sports-panel', 'Sports'],
   weather: ['weather-panel', 'Weather'],
   stocks: ['stocks-panel', 'Stocks'],
+  markets: ['markets-panel', 'Business'],
   clocks: ['clocks-panel', 'World Clocks'],
   tech: ['tech-panel', 'Tech Wire'],
   headlines: ['headlines-panel', 'Headlines']
@@ -529,7 +545,7 @@ const WIDGET_IDS = {
 
 const REFRESH_DEFAULTS = {
   news: 600, local: 600, intl: 600, headlines: 600,
-  sports: 60, weather: 300, stocks: 60, tech: 300, clocks: 30
+  sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 30
 };
 
 function ensureWidgets() {
@@ -542,7 +558,12 @@ function ensureWidgets() {
   const known = Object.keys(WIDGET_IDS);
   if (!Array.isArray(settings.widgetOrder)) settings.widgetOrder = known.slice();
   settings.widgetOrder = settings.widgetOrder.filter(k => known.includes(k));
-  for (const key of known) if (!settings.widgetOrder.includes(key)) settings.widgetOrder.push(key);
+  for (const key of known) {
+    if (settings.widgetOrder.includes(key)) continue;
+    const after = key === 'markets' ? settings.widgetOrder.indexOf('stocks') : -1;
+    if (after >= 0) settings.widgetOrder.splice(after + 1, 0, key);
+    else settings.widgetOrder.push(key);
+  }
 }
 
 function packWidgets(items, cols, rowLimit, growVertical) {
@@ -817,7 +838,7 @@ async function fetchRSS(url) {
           ['cbc.ca', 'CBC'], ['abc.net.au', 'ABC'], ['nhk.or.jp', 'NHK'], ['indiatimes', 'Times of India'],
           ['chicagotribune', 'Chicago Tribune'], ['sfchronicle', 'SF Chronicle'], ['seattletimes', 'Seattle Times'],
           ['bostonglobe', 'Boston Globe'], ['miamiherald', 'Miami Herald'], ['houstonchronicle', 'Houston Chronicle'],
-          ['washingtonpost', 'Washington Post']
+          ['washingtonpost', 'Washington Post'], ['cnbc.com', 'CNBC']
         ];
         const feedSource = named.find(([key]) => host.includes(key));
         const rssSource = (item.querySelector('source')?.textContent || '').replace(/<[^>]*>/g, '').trim();
@@ -867,7 +888,7 @@ async function loadNews(quiet) {
   renderNews();
 }
 
-const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, stocks: 0, tech: 0, clocks: 0 };
+const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, stocks: 0, markets: 0, tech: 0, clocks: 0 };
 
 function nextPageStart(start, total, visible) {
   const size = Math.max(1, visible);
@@ -919,7 +940,7 @@ function renderNews() {
     el.innerHTML = '<div class="error">No news available. Check settings or try later.</div>';
     return;
   }
-  const itemH = 132;
+  const itemH = 172;
   const visible = howMany(el, itemH, 'news');
   if (!visible) { requestAnimationFrame(renderNews); return; }
   const start = Math.floor((window.newsStart || 0) / visible) * visible;
@@ -1005,7 +1026,7 @@ function renderLocalNews() {
     el.innerHTML = '<div class="error">No local news available.</div>';
     return;
   }
-  const itemH = 112;
+  const itemH = 148;
   const visible = howMany(el, itemH, 'local');
   if (!visible) { requestAnimationFrame(renderLocalNews); return; }
   const start = Math.floor((window.localStart || 0) / visible) * visible;
@@ -1078,7 +1099,7 @@ function renderIntlNews() {
     return;
   }
   const countryLabel = settings.intlCountry === 'all' ? 'All Countries' : (document.querySelector(`#intl-country option[value="${settings.intlCountry}"]`)?.textContent || settings.intlCountry);
-  const itemH = 112;
+  const itemH = 148;
   const visible = howMany(el, itemH, 'intl');
   if (!visible) { requestAnimationFrame(renderIntlNews); return; }
   const start = Math.floor((window.intlStart || 0) / visible) * visible;
@@ -1344,7 +1365,7 @@ async function loadWeather(quiet) {
     }
     const controller2 = new AbortController();
     const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
-    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=5&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: controller2.signal });
+    const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,moon_phase&timezone=auto&forecast_days=7&forecast_hours=18&temperature_unit=fahrenheit&wind_speed_unit=mph`, { signal: controller2.signal });
     clearTimeout(timeoutId2);
     if (!wRes.ok) throw new Error('Weather API error ' + wRes.status);
     const w = await wRes.json();
@@ -1399,6 +1420,21 @@ function zoneMinutes(tz) {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();
   }
+}
+
+function localDateKey(tz) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz || undefined, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  } catch (e) {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+  }
+}
+
+function weekdayLabel(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short' });
 }
 
 function weatherCodeToText(code) {
@@ -1507,9 +1543,14 @@ function renderWeather() {
   const aqiLabel = aqi == null ? '—' : Math.round(aqi);
   const aqiColor = aqi == null ? '#94a3b8' : aqi <= 50 ? '#10b981' : aqi <= 100 ? '#eab308' : aqi <= 150 ? '#f97316' : '#ef4444';
   const alerts = weatherData.alerts || [];
-  const moon = moonInfo(now, d.moon_phase && d.moon_phase[0]);
+  const todayKey = localDateKey(weatherData.timezone);
+  const todayIndex = Math.max(0, (d.time || []).findIndex(day => day >= todayKey));
+  const forecastDays = (d.time || []).map((day, i) => ({ day, i })).filter(row => row.day >= todayKey).slice(0, 5);
+  const moon = moonInfo(now, d.moon_phase && d.moon_phase[todayIndex]);
 
   el.innerHTML = `
+    <div class="wx-layout">
+    <div class="wx-main">
     <div style="text-align:center; margin-bottom:0.35rem;">
       <div class="weather-main">${Math.round(c.temperature_2m)}${unit} ${weatherCodeToIcon(c.weather_code)}</div>
       <div style="font-size:0.95rem; opacity:0.9;">${weatherCodeToText(c.weather_code)} · ${weatherData.location}${weatherData.fallback ? ' (fallback)' : ''}</div>
@@ -1527,9 +1568,9 @@ function renderWeather() {
     </div>
     <div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.45rem 0 0.25rem;">5-Day Forecast</div>
     <div class="wx-days">
-      ${(d.time || []).slice(0,5).map((day, i) => `
+      ${(forecastDays.length ? forecastDays : (d.time || []).slice(0, 5).map((day, i) => ({ day, i }))).map(({ day, i }) => `
         <div class="wx-card" style="text-align:center; background:rgba(255,255,255,0.08); border-radius:8px;">
-          <div style="font-size:0.72rem;">${new Date(day).toLocaleDateString(undefined,{weekday:'short'})}</div>
+          <div style="font-size:0.72rem;">${weekdayLabel(day)}</div>
           <div class="wx-icon" style="font-size:1rem; line-height:1.1;">${weatherCodeToIcon(d.weather_code[i])}</div>
           <div style="font-size:0.85rem; font-weight:600;">${Math.round(d.temperature_2m_max[i])}°</div>
           <div style="font-size:0.7rem; opacity:0.7;">${Math.round(d.temperature_2m_min[i])}°</div>
@@ -1546,10 +1587,13 @@ function renderWeather() {
         <strong>${Math.round(c.wind_speed_10m)} mph</strong>
       </div>
     </div>
-    ${alerts.length ? `<div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0.45rem 0 0.2rem;">Alerts</div>${alerts.map(a => `<div class="item" style="font-size:0.8rem;"><strong>${a.event}</strong>${a.severity ? ` · ${a.severity}` : ''}<div class="meta">${a.headline}</div></div>`).join('')}` : ''}
+    </div>
+    <div class="wx-side">
+    ${alerts.length ? `<div class="wx-alerts"><div class="wx-block" style="font-size:0.8rem; font-weight:600; margin:0 0 0.2rem;">Alerts</div>${alerts.map(a => `<div class="item" style="font-size:0.8rem;"><strong>${a.event}</strong>${a.severity ? ` · ${a.severity}` : ''}<div class="meta">${a.headline}</div></div>`).join('')}</div>` : ''}
+    <div class="wx-foot">
     ${(() => {
-      const rise = isoMinutes(d.sunrise && d.sunrise[0]);
-      const set = isoMinutes(d.sunset && d.sunset[0]);
+      const rise = isoMinutes(d.sunrise && d.sunrise[todayIndex]);
+      const set = isoMinutes(d.sunset && d.sunset[todayIndex]);
       if (rise == null || set == null) return '';
       const sunUi = sunArc({ local: zoneMinutes(weatherData.timezone), rise, set }, 'wx');
       return `<div class="wx-sun ${sunUi.night ? 'night' : 'day'}"><div class="sun-stage">${sunUi.svg}${sunUi.marker}</div>${sunUi.times}</div>`;
@@ -1561,34 +1605,64 @@ function renderWeather() {
         <div class="meta">${moon.illum}% illuminated</div>
       </div>
     </div>
+    </div>
+    </div>
+    </div>
   `;
+}
+
+async function fetchQuote(sym) {
+  const yahoo = `${PROXY}https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
+  const backup = `https://my-dashboard.henri-isenberg.workers.dev/api/quote?symbol=${encodeURIComponent(sym)}`;
+  let last = 'failed';
+  for (const target of [yahoo, backup]) {
+    try {
+      const res = await fetch(target, { credentials: 'omit' });
+      if (!res.ok) { last = String(res.status); continue; }
+      const data = await res.json();
+      const result = data.chart?.result?.[0];
+      if (!result?.meta || result.meta.regularMarketPrice == null) { last = 'empty'; continue; }
+      return result;
+    } catch (e) {
+      last = e.message || 'network';
+    }
+  }
+  throw new Error(last);
 }
 
 async function loadStocks(quiet) {
   const content = document.getElementById('stocks-content');
   if (!quiet) content.innerHTML = '<div class="loading">Loading stocks…</div>';
   const symbols = settings.stocks.filter(Boolean);
+  let logged = false;
   const results = await Promise.all(symbols.map(async sym => {
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
-      const res = await fetch(PROXY + url);
-      if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      const result = data.chart?.result?.[0];
-      if (!result) return null;
+      const result = await fetchQuote(sym);
       const meta = result.meta;
       const price = meta.regularMarketPrice;
-      const prev = meta.chartPreviousClose || meta.previousClose;
+      const prev = meta.chartPreviousClose || meta.previousClose || price;
       const change = price - prev;
       const pct = prev ? (change / prev * 100) : 0;
       const closes = result.indicators?.quote?.[0]?.close?.filter(c => c != null) || [];
       return { symbol: sym, price, change, pct, name: meta.shortName || sym, closes };
     } catch (e) {
+      if (!logged) {
+        console.warn('Stock quote failed', sym, e.message || e);
+        logged = true;
+      }
       return { symbol: sym, error: true };
     }
   }));
   stockItems = results.filter(Boolean);
   renderStocks();
+  clearTimeout(window.stockRetryTimer);
+  if (stockItems.some(s => s.error)) {
+    window.stockRetryTimer = setTimeout(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (settings.widgets.stocks && settings.widgets.stocks.visible === false) return;
+      loadStocks(true);
+    }, 5 * 60 * 1000);
+  }
 }
 
 function renderStocks() {
@@ -2137,11 +2211,125 @@ function renderHeadlines() {
   }
 }
 
+let marketItems = [];
+
+function marketDates(count) {
+  const dates = [];
+  const start = new Date();
+  for (let i = 0; dates.length < count && i < 24; i++) {
+    const day = new Date(start.getTime() + i * 86400000);
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(day);
+    if (weekday === 'Sat' || weekday === 'Sun') continue;
+    dates.push(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(day));
+  }
+  return dates;
+}
+
+function parseCap(value) {
+  const n = Number(String(value || '').replace(/[$,]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function sessionLabel(time) {
+  if (time === 'time-pre-market') return 'before open';
+  if (time === 'time-after-hours') return 'after close';
+  return 'time TBD';
+}
+
+async function fetchEarningsDay(date) {
+  const bases = window.earningsBases || [
+    '/api/earnings?date=',
+    'https://my-dashboard.henri-isenberg.workers.dev/api/earnings?date='
+  ];
+  for (const base of bases) {
+    try {
+      const res = await fetch(base + date, { credentials: 'omit' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      window.earningsBases = [base];
+      return ((data.data && data.data.rows) || []).map(row => ({ ...row, date }));
+    } catch (e) {}
+  }
+  return [];
+}
+
+function dayLabel(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return iso || '';
+  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+async function loadMarkets(quiet) {
+  const content = document.getElementById('markets-content');
+  if (!content) return;
+  if (!quiet) content.innerHTML = '<div class="loading">Loading business news…</div>';
+  const mine = new Set((settings.stocks || []).map(s => String(s).toUpperCase()).filter(s => s && !s.startsWith('^')));
+  const large = 10000000000;
+  const [news, calendars] = await Promise.all([
+    fetchRSS('https://www.cnbc.com/id/10000664/device/rss/rss.html'),
+    Promise.all(marketDates(8).map(date => fetchEarningsDay(date)))
+  ]);
+  const seen = new Set();
+  const earnings = calendars.flat().filter(row => {
+    const symbol = String(row.symbol || '').toUpperCase();
+    if (!symbol || seen.has(symbol)) return false;
+    const owned = mine.has(symbol);
+    if (!owned && parseCap(row.marketCap) < large) return false;
+    seen.add(symbol);
+    row.symbol = symbol;
+    row.owned = owned;
+    return true;
+  }).sort((a, b) => Number(b.owned) - Number(a.owned) || String(a.date).localeCompare(String(b.date)));
+  marketItems = [
+    ...earnings.slice(0, 16).map(row => ({ kind: 'earn', ...row })),
+    ...news.filter(item => item.title).slice(0, 12).map(item => ({ kind: 'news', ...item }))
+  ];
+  if (!quiet) window.marketsStart = 0;
+  renderMarkets();
+}
+
+function renderMarkets() {
+  const el = document.getElementById('markets-content');
+  if (!el) return;
+  if (!marketItems.length) {
+    el.innerHTML = '<div class="error">No business news right now.</div>';
+    return;
+  }
+  const itemH = 96;
+  const visible = howMany(el, itemH, 'markets');
+  if (!visible) { requestAnimationFrame(renderMarkets); return; }
+  const start = Math.floor((window.marketsStart || 0) / visible) * visible;
+  window.marketsStart = start >= marketItems.length ? 0 : start;
+  const slice = marketItems.slice(window.marketsStart, window.marketsStart + visible);
+  let shownEarn = false;
+  let shownNews = false;
+  el.innerHTML = `<div class="items-scroller">${slice.map(item => {
+    let kick = '';
+    if (item.kind === 'earn' && !shownEarn) { kick = '<div class="meta" style="font-weight:700;">Earnings</div>'; shownEarn = true; }
+    if (item.kind === 'news' && !shownNews) { kick = '<div class="meta" style="font-weight:700;margin-top:0.35rem;">Business</div>'; shownNews = true; }
+    if (item.kind === 'earn') {
+      const est = item.epsForecast && item.epsForecast !== 'N/A' ? ` · est ${item.epsForecast}` : '';
+      return `${kick}<div class="item earn-row"><div>${item.owned ? '<span class="earn-badge"></span>' : ''}<strong>${item.symbol}</strong> ${dayLabel(item.date)} · ${sessionLabel(item.time)}${est}<div class="meta">${item.name || ''}</div></div></div>`;
+    }
+    return `${kick}<div class="item news-item"><div class="news-headline"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>${item.summary ? `<div class="meta">${item.summary.slice(0, 110)}${item.summary.length >= 110 ? '…' : ''}</div>` : ''}<div class="meta">${[item.source, item.pubDate ? new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')}</div></div>`;
+  }).join('')}</div>${marketItems.some(item => item.owned) ? '<div class="earn-legend"><span class="earn-badge"></span>On Your List</div>' : ''}${dotsHtml(marketItems.length, visible, window.marketsStart)}`;
+  el._refit = () => tightenIfOverflow(el, 'markets', renderMarkets);
+  tightenIfOverflow(el, 'markets', renderMarkets);
+  clearInterval(rotationTimers.markets);
+  if (marketItems.length > visible) {
+    rotationTimers.markets = setInterval(() => {
+      window.marketsStart = nextPageStart(window.marketsStart || 0, marketItems.length, visible);
+      renderMarkets();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
 async function refreshAll(opts) {
   updateClock();
-  const skipStocks = opts && opts.skipClosedStocks && stockItems.length && !marketIsLive();
+  const failedStocks = stockItems.some(s => s.error);
+  const skipStocks = opts && opts.skipClosedStocks && stockItems.length && !failedStocks && !marketIsLive();
   await Promise.all([
-    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadSports(), loadWeather(),
+    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadMarkets(), loadSports(), loadWeather(),
     skipStocks ? Promise.resolve() : loadStocks()
   ]);
 }
@@ -2276,14 +2464,14 @@ function scheduleRefreshes() {
   Object.values(window.widgetRefreshTimers).forEach(clearInterval);
   const loaders = {
     news: loadNews, local: loadLocalNews, intl: loadIntlNews, headlines: loadHeadlines,
-    sports: loadSports, weather: loadWeather, stocks: loadStocks, tech: loadTech
+    sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech
   };
   Object.entries(loaders).forEach(([key, fn]) => {
     const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
     window.widgetRefreshTimers[key] = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (settings.widgets[key] && settings.widgets[key].visible === false) return;
-      if (key === 'stocks' && !marketIsLive()) return;
+      if (key === 'stocks' && (stockItems.some(s => s.error) || !marketIsLive())) return;
       fn(true);
     }, sec * 1000);
   });
@@ -2297,6 +2485,7 @@ function refitPanels() {
   renderIntlNews();
   renderSports();
   renderStocks();
+  renderMarkets();
   renderWeather();
   renderTech();
   renderHeadlines();
