@@ -453,7 +453,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
   </section>
 </main>
-<footer>v90 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v91 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -530,6 +530,8 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <textarea id="stocks-list" placeholder="AAPL, MSFT, GOOGL, ..."></textarea>
     <label>Content rotation speed (seconds)</label>
     <input type="number" id="rotation-seconds" min="5" max="120" value="10">
+    <label>World clock rotation (seconds)</label>
+    <input type="number" id="clock-rotation" min="5" max="120" value="15">
     <label>Max news age (hours, older items hidden)</label>
     <input type="number" id="max-age" min="1" max="168" value="24">
     </div>
@@ -567,6 +569,7 @@ const defaultSettings = {
   ],
   stocks: ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','ANT','SPY','QQQ','DIA','^GSPC','^DJI','^IXIC','SPCX'],
   rotationSeconds: 10,
+  clockRotationSeconds: 15,
   maxNewsAgeHours: 24,
   motiveSources: ['jewish', 'christian', 'muslim', 'hindu', 'buddhist', 'sikh', 'secular'],
   widgets: {
@@ -601,7 +604,7 @@ const WIDGET_IDS = {
 
 const REFRESH_DEFAULTS = {
   news: 600, local: 600, intl: 600, headlines: 600,
-  sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 30, motive: 600
+  sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 15, motive: 600
 };
 
 function ensureWidgets() {
@@ -872,7 +875,10 @@ function updateClock() {
   document.getElementById('clock').textContent = now.toLocaleString(undefined, {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
   });
-  if (typeof renderClocks === 'function') renderClocks();
+  if (typeof renderClocks === 'function') {
+    if (document.querySelector('#clocks-content .clock-card')) tickClocks();
+    else renderClocks();
+  }
 }
 
 function rssImage(item) {
@@ -1905,6 +1911,7 @@ function setupSettingsUI() {
     `<label><input type="checkbox" value="${id}" ${motiveOn.includes(id) ? 'checked' : ''}> ${label}</label>`
   ).join('');
   document.getElementById('rotation-seconds').value = settings.rotationSeconds;
+  document.getElementById('clock-rotation').value = settings.clockRotationSeconds || 15;
   const age = document.getElementById('max-age');
   if (age) age.value = settings.maxNewsAgeHours || 24;
   ensureWidgets();
@@ -1922,7 +1929,7 @@ function setupSettingsUI() {
       <label><input type="checkbox" data-widget="${key}" ${w.visible ? 'checked' : ''}> ${label}</label>
       <span>
         <select data-widget-refresh="${key}" title="How often this widget reloads">
-          ${ropt(30,'30s')}${ropt(60,'1m')}${ropt(120,'2m')}${ropt(300,'5m')}${ropt(600,'10m')}${ropt(1800,'30m')}${ropt(3600,'1h')}
+          ${ropt(15,'15s')}${ropt(30,'30s')}${ropt(60,'1m')}${ropt(120,'2m')}${ropt(300,'5m')}${ropt(600,'10m')}${ropt(1800,'30m')}${ropt(3600,'1h')}
         </select>
         <select data-widget-size="${key}">
           ${opt('1x1', '1×1')}${opt('2x1', '2×1')}${opt('1x2', '1×2')}${opt('2x2', '2×2')}
@@ -2053,6 +2060,7 @@ function applySettings() {
     if (!settings.motiveSources.length) settings.motiveSources = ['secular'];
   }
   settings.rotationSeconds = Math.max(5, parseInt(document.getElementById('rotation-seconds').value) || 10);
+  settings.clockRotationSeconds = Math.max(5, parseInt(document.getElementById('clock-rotation').value) || 15);
   settings.maxNewsAgeHours = Math.max(1, parseInt(document.getElementById('max-age').value) || 24);
   settings.canvas.mode = document.getElementById('canvas-mode').value === 'fixed' ? 'fixed' : 'auto';
   settings.canvas.columns = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-cols').value, 10) || 3));
@@ -2067,7 +2075,7 @@ function applySettings() {
   });
   document.querySelectorAll('#widget-settings select[data-widget-refresh]').forEach(sel => {
     const key = sel.dataset.widgetRefresh;
-    settings.widgets[key].refreshSeconds = Math.max(30, parseInt(sel.value, 10) || 60);
+    settings.widgets[key].refreshSeconds = Math.max(15, parseInt(sel.value, 10) || 60);
   });
   const order = [...document.querySelectorAll('#widget-settings .widget-row')].map(row => row.dataset.key).filter(Boolean);
   if (order.length) settings.widgetOrder = order;
@@ -2091,23 +2099,50 @@ function renderClocks() {
   const compactFit = howMany(el, 158, 'clocks');
   const compact = fullFit < clocks.length && compactFit > fullFit;
   const visible = Math.min(clocks.length, compact ? compactFit : fullFit);
-  const start = (window.clocksStart || 0) % clocks.length;
+  const start = Math.floor((window.clocksStart || 0) / visible) * visible;
+  window.clocksStart = start;
   const slice = [];
   for (let i = 0; i < visible; i++) slice.push(clocks[(start + i) % clocks.length]);
   el.innerHTML = `<div class="items-scroller"><div class="clock-grid${compact ? ' compact' : ''}">${slice.map(c => clockFace(c, compact)).join('')}</div></div>${dotsHtml(clocks.length, visible, start, 'clocks')}`;
   tightenIfOverflow(el, 'clocks', renderClocks);
-  const sec = settings.rotationSeconds || 10;
+  const sec = Math.max(5, parseInt(settings.clockRotationSeconds, 10) || 15);
   if (window.clocksVisible !== visible || window.clocksRotateSec !== sec) {
     window.clocksVisible = visible;
     window.clocksRotateSec = sec;
     clearInterval(rotationTimers.clocks);
     if (clocks.length > visible) {
       rotationTimers.clocks = setInterval(() => {
-        window.clocksStart = ((window.clocksStart || 0) + 1) % clocks.length;
+        window.clocksStart = nextPageStart(window.clocksStart || 0, clocks.length, visible);
         renderClocks();
       }, sec * 1000);
     }
   }
+}
+
+function tickClocks() {
+  document.querySelectorAll('#clocks-content .clock-card').forEach(card => {
+    const tz = card.dataset.tz;
+    const lat = card.dataset.lat === '' ? null : Number(card.dataset.lat);
+    const lon = Number(card.dataset.lon);
+    let parts;
+    let digital;
+    try {
+      parts = zoneParts(tz, new Date());
+      digital = new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+      return;
+    }
+    const time = card.querySelector('.clock-time');
+    if (time) time.textContent = digital;
+    const analog = card.querySelector('.analog');
+    if (analog) analog.outerHTML = analogSVG(parts.h, parts.m, parts.s, card.classList.contains('day'));
+    if (lat == null || Number.isNaN(lat)) return;
+    const sun = solarMinutes(lat, lon, tz);
+    if (!sun || sun.rise == null || sun.set == null) return;
+    const sunUi = sunArc(sun, String(tz || card.dataset.label || 'c').replace(/\W/g, ''));
+    const stage = card.querySelector('.sun-stage');
+    if (stage) stage.innerHTML = `${sunUi.svg || ''}${sunUi.marker || ''}`;
+  });
 }
 
 const CITIES = [
@@ -2283,7 +2318,7 @@ function clockFace(raw, compact) {
   const gid = String(c.tz || c.label || 'c').replace(/\W/g, '');
   const sunUi = (sun && sun.rise != null && sun.set != null) ? sunArc(sun, gid) : { svg: '', times: '', marker: '', night: false };
   const tone = sunUi.svg ? (sunUi.night ? 'night' : 'day') : '';
-  return `<div class="clock-card ${tone}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="clock-city">${c.label}</div><div class="meta clock-date">${dateLine}</div></div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
+  return `<div class="clock-card ${tone}" data-tz="${c.tz}" data-lat="${c.lat ?? ''}" data-lon="${c.lon ?? ''}" data-label="${c.label}"><div class="sun-stage">${sunUi.svg || ''}${sunUi.marker || ''}</div><div class="clock-head"><div class="clock-meta"><div class="clock-city">${c.label}</div><div class="meta clock-date">${dateLine}</div></div>${analogSVG(parts.h, parts.m, parts.s, tone === 'day')}</div><div class="clock-time">${digital}</div>${sunUi.times || ''}</div>`;
 }
 
 let techItems = [];
@@ -2759,7 +2794,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshAll({ skipClosedStocks: true });
 });
 scheduleRefreshes();
-setInterval(renderClocks, 1000);
+setInterval(tickClocks, 1000);
 
 function marketIsLive() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -2783,7 +2818,7 @@ function scheduleRefreshes() {
     sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech, motive: loadMotive
   };
   Object.entries(loaders).forEach(([key, fn]) => {
-    const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
+    const sec = Math.max(15, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
     window.widgetRefreshTimers[key] = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       if (settings.widgets[key] && settings.widgets[key].visible === false) return;
