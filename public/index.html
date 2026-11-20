@@ -352,6 +352,17 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .clock-grid.compact .sun-times { font-size: 0.68rem; }
 .clock-grid.compact .clock-time { font-size: 1.7rem; }
 #clocks-content { overflow: hidden; }
+.motive-card { height: 100%; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.45rem; }
+.motive-kicker { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; font-weight: 700; }
+.motive-text { font-size: clamp(1rem, 4.2cqi, 1.5rem); line-height: 1.35; font-weight: 650; }
+.motive-source { font-size: 0.78rem; opacity: 0.75; }
+.motive-ring {
+  width: 18px; height: 18px; border: 0; padding: 0; border-radius: 50%; cursor: pointer; flex: 0 0 auto;
+  background:
+    radial-gradient(circle at center, var(--panel) 0 5px, transparent 5.5px),
+    conic-gradient(#60a5fa var(--rot-p, 0%), rgba(148, 163, 184, 0.35) 0);
+  animation: rot-count var(--rot-ms, 10s) linear forwards;
+}
 .sun-marker { position: absolute; z-index: 1; width: 14px; height: 14px; margin: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #fffbeb; box-shadow: 0 0 12px 5px rgba(251,191,36,0.55); }
 .sun-marker.phase { width: 26px; height: 26px; background: transparent; box-shadow: none; border-radius: 0; }
 .sun-marker.phase .moon-disk { width: 26px; height: 26px; }
@@ -437,8 +448,12 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <h2>🖼️ Headlines</h2>
     <div class="panel-content" id="headlines-content"><div class="loading">Loading headlines…</div></div>
   </section>
+  <section class="panel" id="motive-panel">
+    <h2>✨ Motivation</h2>
+    <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
+  </section>
 </main>
-<footer>v89 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v90 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -509,6 +524,8 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
       <option value="TH">Thailand</option>
       <option value="VN">Vietnam</option>
     </select>
+    <label>Motivation sources</label>
+    <div class="checkbox-group" id="motive-group"></div>
     <label>Stock Tickers (comma-separated, e.g. AAPL, MSFT, SPY, ^GSPC)</label>
     <textarea id="stocks-list" placeholder="AAPL, MSFT, GOOGL, ..."></textarea>
     <label>Content rotation speed (seconds)</label>
@@ -551,6 +568,7 @@ const defaultSettings = {
   stocks: ['AAPL','MSFT','GOOGL','AMZN','META','NVDA','TSLA','ANT','SPY','QQQ','DIA','^GSPC','^DJI','^IXIC','SPCX'],
   rotationSeconds: 10,
   maxNewsAgeHours: 24,
+  motiveSources: ['jewish', 'christian', 'muslim', 'hindu', 'buddhist', 'sikh', 'secular'],
   widgets: {
     news: { visible: true, size: '2x1' },
     local: { visible: true, size: '1x1' },
@@ -561,7 +579,8 @@ const defaultSettings = {
     markets: { visible: true, size: '1x2' },
     clocks: { visible: true, size: '1x1' },
     tech: { visible: true, size: '1x1' },
-    headlines: { visible: true, size: '2x1' }
+    headlines: { visible: true, size: '2x1' },
+    motive: { visible: true, size: '1x1' }
   },
   canvas: { mode: 'auto', columns: 3, rows: 2 }
 };
@@ -576,12 +595,13 @@ const WIDGET_IDS = {
   markets: ['markets-panel', 'Business'],
   clocks: ['clocks-panel', 'World Clocks'],
   tech: ['tech-panel', 'Tech Wire'],
-  headlines: ['headlines-panel', 'Headlines']
+  headlines: ['headlines-panel', 'Headlines'],
+  motive: ['motive-panel', 'Motivation']
 };
 
 const REFRESH_DEFAULTS = {
   news: 600, local: 600, intl: 600, headlines: 600,
-  sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 30
+  sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 30, motive: 600
 };
 
 function ensureWidgets() {
@@ -834,6 +854,9 @@ function loadSettings() {
     saveSettings();
   }
   if (!Array.isArray(settings.restLeagues)) settings.restLeagues = [];
+  if (!Array.isArray(settings.motiveSources) || !settings.motiveSources.length) {
+    settings.motiveSources = defaultSettings.motiveSources.slice();
+  }
 }
 
 function saveSettings() {
@@ -1877,6 +1900,10 @@ function setupSettingsUI() {
   document.getElementById('local-news-location').value = settings.localNewsLocation || settings.weatherLocation;
   document.getElementById('intl-country').value = settings.intlCountry || 'US';
   document.getElementById('stocks-list').value = settings.stocks.join(', ');
+  const motiveOn = settings.motiveSources || defaultSettings.motiveSources;
+  document.getElementById('motive-group').innerHTML = MOTIVE_SOURCES.map(([id, label]) =>
+    `<label><input type="checkbox" value="${id}" ${motiveOn.includes(id) ? 'checked' : ''}> ${label}</label>`
+  ).join('');
   document.getElementById('rotation-seconds').value = settings.rotationSeconds;
   const age = document.getElementById('max-age');
   if (age) age.value = settings.maxNewsAgeHours || 24;
@@ -2020,6 +2047,11 @@ function applySettings() {
   settings.localNewsLocation = document.getElementById('local-news-location').value.trim() || settings.weatherLocation;
   settings.intlCountry = document.getElementById('intl-country').value || 'US';
   settings.stocks = document.getElementById('stocks-list').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const motiveBoxes = [...document.querySelectorAll('#motive-group input')];
+  if (motiveBoxes.length) {
+    settings.motiveSources = motiveBoxes.filter(i => i.checked).map(i => i.value);
+    if (!settings.motiveSources.length) settings.motiveSources = ['secular'];
+  }
   settings.rotationSeconds = Math.max(5, parseInt(document.getElementById('rotation-seconds').value) || 10);
   settings.maxNewsAgeHours = Math.max(1, parseInt(document.getElementById('max-age').value) || 24);
   settings.canvas.mode = document.getElementById('canvas-mode').value === 'fixed' ? 'fixed' : 'auto';
@@ -2466,17 +2498,153 @@ function renderMarkets() {
   }
 }
 
+const MOTIVE_SOURCES = [
+  ['jewish', 'Jewish'],
+  ['christian', 'Christian'],
+  ['muslim', 'Muslim'],
+  ['hindu', 'Hindu'],
+  ['buddhist', 'Buddhist'],
+  ['sikh', 'Sikh'],
+  ['secular', 'Secular']
+];
+
+const MOTIVES = [
+  { source: 'jewish', text: 'This is the day the Lord has made. Let us rejoice and be glad in it.', from: 'Psalm 118:24' },
+  { source: 'jewish', text: 'Be strong and of good courage.', from: 'Joshua 1:9' },
+  { source: 'jewish', text: 'Trust in the Lord with all your heart.', from: 'Proverbs 3:5' },
+  { source: 'jewish', text: 'A joyful heart is good medicine.', from: 'Proverbs 17:22' },
+  { source: 'jewish', text: 'It is not on you to finish the work, but you are not free to abandon it.', from: 'Pirkei Avot 2:16' },
+  { source: 'jewish', text: 'Who is rich? The one who rejoices in what they have.', from: 'Pirkei Avot 4:1' },
+  { source: 'jewish', text: 'Justice, justice shall you pursue.', from: 'Deuteronomy 16:20' },
+  { source: 'jewish', text: 'The world stands on truth, on justice, and on peace.', from: 'Pirkei Avot 1:18' },
+  { source: 'christian', text: 'I can do all things through Christ who strengthens me.', from: 'Philippians 4:13' },
+  { source: 'christian', text: 'Let your light shine.', from: 'Matthew 5:16' },
+  { source: 'christian', text: 'Do not be afraid. Only believe.', from: 'Mark 5:36' },
+  { source: 'christian', text: 'Blessed are the peacemakers.', from: 'Matthew 5:9' },
+  { source: 'christian', text: 'Faith is the substance of things hoped for.', from: 'Hebrews 11:1' },
+  { source: 'christian', text: 'Love is patient, and love is kind.', from: '1 Corinthians 13:4' },
+  { source: 'christian', text: 'Ask, and it shall be given you. Seek, and you shall find.', from: 'Matthew 7:7' },
+  { source: 'christian', text: 'In the world you will have trouble. Take heart.', from: 'John 16:33' },
+  { source: 'muslim', text: 'With hardship comes ease.', from: 'Quran 94:6' },
+  { source: 'muslim', text: 'God does not burden a soul beyond what it can bear.', from: 'Quran 2:286' },
+  { source: 'muslim', text: 'Remember Me, and I will remember you.', from: 'Quran 2:152' },
+  { source: 'muslim', text: 'God is with those who are patient.', from: 'Quran 2:153' },
+  { source: 'muslim', text: 'Speak a good word, or remain silent.', from: 'Traditional saying' },
+  { source: 'muslim', text: 'The best of people are the most helpful to others.', from: 'Traditional saying' },
+  { source: 'muslim', text: 'Kindness is a mark of faith.', from: 'Traditional saying' },
+  { source: 'muslim', text: 'Begin in the name of God, the merciful, the compassionate.', from: 'Quran 1:1' },
+  { source: 'hindu', text: 'You have a right to the work, not to its fruits.', from: 'Bhagavad Gita 2:47' },
+  { source: 'hindu', text: 'The soul is not born, and it does not die.', from: 'Bhagavad Gita 2:20' },
+  { source: 'hindu', text: 'Lift yourself by your own mind.', from: 'Bhagavad Gita 6:5' },
+  { source: 'hindu', text: 'A person is made of their faith.', from: 'Bhagavad Gita 17:3' },
+  { source: 'hindu', text: 'Set your heart on the work, and let go of the result.', from: 'Bhagavad Gita 2:48' },
+  { source: 'hindu', text: 'No step on this path is ever wasted.', from: 'Bhagavad Gita 2:40' },
+  { source: 'hindu', text: 'Steady the mind, and peace follows.', from: 'Bhagavad Gita 6:26' },
+  { source: 'hindu', text: 'Whatever you do, offer it freely.', from: 'Bhagavad Gita 9:27' },
+  { source: 'buddhist', text: 'Hatred never ends hatred. Only love ends it.', from: 'Dhammapada 5' },
+  { source: 'buddhist', text: 'Drop by drop, the water pot is filled.', from: 'Dhammapada 122' },
+  { source: 'buddhist', text: 'We become what we keep thinking.', from: 'Dhammapada 1' },
+  { source: 'buddhist', text: 'Greater than conquering others is conquering yourself.', from: 'Dhammapada 103' },
+  { source: 'buddhist', text: 'Overcome anger with kindness, and evil with good.', from: 'Dhammapada 223' },
+  { source: 'buddhist', text: 'Better than a thousand empty words is one word that brings peace.', from: 'Dhammapada 100' },
+  { source: 'buddhist', text: 'As a flower hurts no one, let your life be gentle.', from: 'Dhammapada' },
+  { source: 'buddhist', text: 'Health is the greatest gift. Contentment is the greatest wealth.', from: 'Dhammapada 204' },
+  { source: 'sikh', text: 'See the light of God in every face.', from: 'Guru Granth Sahib' },
+  { source: 'sikh', text: 'Recognize the whole human race as one.', from: 'Guru Gobind Singh' },
+  { source: 'sikh', text: 'Service makes the heart clean.', from: 'Guru Granth Sahib' },
+  { source: 'sikh', text: 'Even in the dark, keep walking toward the light.', from: 'Guru Nanak' },
+  { source: 'sikh', text: 'Speak the truth, and live the truth.', from: 'Guru Nanak' },
+  { source: 'sikh', text: 'Those who love God learn to love everyone.', from: 'Guru Granth Sahib' },
+  { source: 'sikh', text: 'Work honestly, share what you have, and remember God.', from: 'Guru Nanak' },
+  { source: 'secular', text: 'You have power over your mind, not over outside events. Realize this, and you will find strength.', from: 'Marcus Aurelius' },
+  { source: 'secular', text: 'What stands in the way becomes the way.', from: 'Marcus Aurelius' },
+  { source: 'secular', text: 'Well done is better than well said.', from: 'Benjamin Franklin' },
+  { source: 'secular', text: 'Diligence is the mother of good luck.', from: 'Benjamin Franklin' },
+  { source: 'secular', text: 'Begin, be bold, and venture to be wise.', from: 'Horace' },
+  { source: 'secular', text: 'Take the next small step. That is enough for today.', from: 'Secular' },
+  { source: 'secular', text: 'You can begin again this very hour.', from: 'Secular' },
+  { source: 'secular', text: 'Courage is moving while you are still unsure.', from: 'Secular' },
+  { source: 'secular', text: 'One honest effort beats a perfect plan.', from: 'Secular' },
+  { source: 'secular', text: 'Progress is quieter than doubt. Keep going.', from: 'Secular' },
+  { source: 'secular', text: 'Rest is part of the work, not a failure of it.', from: 'Secular' },
+  { source: 'secular', text: 'Kindness you give away comes back as strength.', from: 'Secular' }
+];
+
+let motiveItems = [];
+
+function motivePool() {
+  const on = new Set((settings.motiveSources && settings.motiveSources.length) ? settings.motiveSources : defaultSettings.motiveSources);
+  const pool = MOTIVES.filter(item => on.has(item.source));
+  return pool.length ? pool : MOTIVES.filter(item => item.source === 'secular');
+}
+
+function shuffleMotive(list) {
+  const copy = list.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const swap = copy[i];
+    copy[i] = copy[j];
+    copy[j] = swap;
+  }
+  return copy;
+}
+
+function loadMotive() {
+  motiveItems = shuffleMotive(motivePool());
+  window.motiveStart = Math.floor(Math.random() * motiveItems.length);
+  renderMotive();
+}
+
+function renderMotive() {
+  const el = document.getElementById('motive-content');
+  if (!el) return;
+  if (!motiveItems.length) {
+    el.innerHTML = '<div class="error">Choose a motivation source in Settings.</div>';
+    return;
+  }
+  const item = motiveItems[(window.motiveStart || 0) % motiveItems.length];
+  const label = (MOTIVE_SOURCES.find(row => row[0] === item.source) || ['', item.source])[1];
+  const ms = (settings.rotationSeconds || 10) * 1000;
+  el.innerHTML = `<div class="motive-card">
+    <div class="motive-kicker">${label}</div>
+    <div class="motive-text">${item.text}</div>
+    <div class="motive-source">${item.from}</div>
+    <button type="button" class="motive-ring" style="--rot-ms:${ms}ms" aria-label="Next message"></button>
+  </div>`;
+  clearInterval(rotationTimers.motive);
+  clearTimeout(rotationTimers.motiveWait);
+  if (motiveItems.length > 1) {
+    rotationTimers.motive = setInterval(() => {
+      el.classList.add('fading');
+      rotationTimers.motiveWait = setTimeout(() => {
+        window.motiveStart = ((window.motiveStart || 0) + 1) % motiveItems.length;
+        renderMotive();
+        el.classList.remove('fading');
+      }, 220);
+    }, ms);
+  }
+}
+
 async function refreshAll(opts) {
   updateClock();
   const failedStocks = stockItems.some(s => s.error);
   const skipStocks = opts && opts.skipClosedStocks && stockItems.length && !failedStocks && !marketIsLive();
   await Promise.all([
-    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadMarkets(), loadSports(), loadWeather(),
+    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadMarkets(), loadSports(), loadWeather(), loadMotive(),
     skipStocks ? Promise.resolve() : loadStocks()
   ]);
 }
 
 document.addEventListener('click', e => {
+  const ring = e.target.closest && e.target.closest('.motive-ring');
+  if (ring) {
+    e.preventDefault();
+    if (motiveItems.length) {
+      window.motiveStart = ((window.motiveStart || 0) + 1) % motiveItems.length;
+      renderMotive();
+    }
+    return;
+  }
   const dot = e.target.closest && e.target.closest('.rot-dots .dot');
   if (!dot) return;
   e.preventDefault();
@@ -2612,7 +2780,7 @@ function scheduleRefreshes() {
   Object.values(window.widgetRefreshTimers).forEach(clearInterval);
   const loaders = {
     news: loadNews, local: loadLocalNews, intl: loadIntlNews, headlines: loadHeadlines,
-    sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech
+    sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech, motive: loadMotive
   };
   Object.entries(loaders).forEach(([key, fn]) => {
     const sec = Math.max(30, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
@@ -2637,6 +2805,7 @@ function refitPanels() {
   renderWeather();
   renderTech();
   renderHeadlines();
+  renderMotive();
   renderClocks();
 }
 let resizeTimer;
