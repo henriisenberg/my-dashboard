@@ -352,9 +352,11 @@ button { padding: 0.45rem 0.9rem; border-radius: 6px; border: none; cursor: poin
 .clock-grid.compact .sun-times { font-size: 0.68rem; }
 .clock-grid.compact .clock-time { font-size: 1.7rem; }
 #clocks-content { overflow: hidden; }
-.sport-row { display: flex; align-items: center; gap: 0.35rem; }
-.sport-row.sport-fav { border-left: 3px solid #f59e0b; padding-left: 0.4rem; }
-.sport-row.sport-live { background: rgba(16,185,129,0.15); border-radius: 6px; padding: 0.35rem 0.4rem; }
+.sport-card { display: flex; flex-direction: column; gap: 0.4rem; }
+.sport-team { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.7; }
+.sport-line { display: flex; align-items: center; gap: 0.35rem; }
+.sport-line.sport-fav { border-left: 3px solid #f59e0b; padding-left: 0.4rem; }
+.sport-line.sport-live { background: rgba(16,185,129,0.15); border-radius: 6px; padding: 0.35rem 0.4rem; }
 .sport-side { display: flex; align-items: center; gap: 0.3rem; min-width: 0; flex: 1 1 0; }
 .sport-side img { width: 22px; height: 22px; object-fit: contain; }
 .sport-home { flex-direction: row-reverse; text-align: right; }
@@ -464,7 +466,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
   </section>
 </main>
-<footer>v95 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v100 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -1293,7 +1295,7 @@ async function loadSports(quiet) {
     const dup = games.some(x => key(x) === key(g));
     if (!dup) games.push(g);
   });
-  sportsItems = orderSports(games.filter(gameInWindow));
+  sportsItems = orderSports(games.filter(g => gameInWindow(g)));
   await fillMissingRecords(sportsItems);
   if (!quiet) window.sportsStart = 0;
   renderSports();
@@ -1322,12 +1324,21 @@ function recordText(side) {
 
 function gameInWindow(game, now = Date.now()) {
   if (!game) return false;
-  if (game.scheduledNext || game.isLive || game.state === 'in') return true;
+  if (typeof now !== 'number' || now < 1e11) now = Date.now();
   const t = Date.parse(game.date);
+  const recentMs = 36 * 60 * 60 * 1000;
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  if (game.isLive || game.state === 'in') return true;
   if (Number.isNaN(t)) return false;
-  const windowMs = 36 * 60 * 60 * 1000;
-  if (game.isUpcoming || game.state === 'pre' || t > now) return t >= now - 60 * 60 * 1000 && t - now <= windowMs;
-  return t <= now && now - t <= windowMs;
+  const upcoming = game.scheduledNext || game.isUpcoming || game.state === 'pre' || t > now;
+  if (upcoming) return t >= now - 60 * 60 * 1000 && t - now <= weekMs;
+  return t <= now && now - t <= recentMs;
+}
+
+function finalDateLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return 'Final';
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function scheduleLabel(dateStr, detail) {
@@ -1377,7 +1388,7 @@ function mapSportsEvent(lg, info, ev) {
     clock,
     date,
     favorite: isFavoriteTeam(lg, awayAbbr, homeAbbr, awayName, homeName),
-    statusDetail: isLive ? (detail || (clock ? `Q${period} ${clock}` : 'Live')) : (isUpcoming ? scheduleLabel(date, detail) : detail)
+    statusDetail: isLive ? (detail || (clock ? `Q${period} ${clock}` : 'Live')) : (isUpcoming ? scheduleLabel(date, detail) : finalDateLabel(date))
   };
 }
 
@@ -1405,19 +1416,26 @@ async function favoriteWindowGames(fav) {
     const now = Date.now();
     const mapped = (data.events || []).map(ev => mapSportsEvent(fav.league, info, ev));
     const recent = mapped.filter(g => {
-      if (g.isLive || g.state === 'in') return true;
       const t = Date.parse(g.date);
-      if (Number.isNaN(t) || t > now || g.isUpcoming || g.state === 'pre') return false;
+      if (Number.isNaN(t) || t > now || g.state === 'pre') return false;
+      if (g.isLive || g.state === 'in') return true;
+      if (g.isUpcoming) return false;
       return now - t <= 36 * 60 * 60 * 1000;
-    });
+    }).sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+    const finalGame = recent.find(g => !g.isLive && g.state !== 'in');
+    const liveGame = recent.find(g => g.isLive || g.state === 'in');
+    const latest = [];
+    if (finalGame) latest.push(finalGame);
+    if (liveGame && liveGame !== finalGame) latest.push(liveGame);
     const next = mapped
       .filter(g => {
         const t = Date.parse(g.date);
-        return !g.isLive && !Number.isNaN(t) && t > now;
+        return !g.isLive && !Number.isNaN(t) && t > now && t - now <= 7 * 24 * 60 * 60 * 1000;
       })
       .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))[0];
-    const rows = recent.slice();
-    if (next && !recent.some(g => (g.date || '').slice(0, 10) === (next.date || '').slice(0, 10) && g.away === next.away && g.home === next.home)) {
+    const rows = latest.slice();
+    latest.forEach(g => { g.recentResult = !g.isLive; });
+    if (next && !latest.some(g => (g.date || '').slice(0, 10) === (next.date || '').slice(0, 10) && g.away === next.away && g.home === next.home)) {
       next.scheduledNext = true;
       next.isUpcoming = true;
       next.statusDetail = scheduleLabel(next.date, next.status);
@@ -1427,7 +1445,7 @@ async function favoriteWindowGames(fav) {
       g.favorite = true;
       if (teamRecord && abbr === normAbbr(g.leagueKey, g.away) && !g.awayRecord) g.awayRecord = teamRecord;
       if (teamRecord && abbr === normAbbr(g.leagueKey, g.home) && !g.homeRecord) g.homeRecord = teamRecord;
-      if (!g.isLive && !g.statusDetail) g.statusDetail = g.isUpcoming ? scheduleLabel(g.date, g.status) : (g.status || 'Final');
+      if (!g.isLive && !g.isUpcoming) g.statusDetail = finalDateLabel(g.date);
       return g;
     });
   } catch (e) {
@@ -1510,71 +1528,159 @@ function isFavoriteTeam(league, away, home, awayName, homeName) {
     if (t.league !== league) return false;
     if (t.abbr === a || t.abbr === h) return true;
     const name = (t.name || '').toLowerCase();
-    return name && names.some(n => n.includes(name));
+    if (name.length < 4) return false;
+    return names.some(n => n === name || n.startsWith(name + ' ') || n.endsWith(' ' + name));
   });
 }
 
 function orderSports(games) {
-  const rank = g => (g.isLive ? 0 : (g.isUpcoming || g.scheduledNext ? 2 : 1));
-  const favorites = games.filter(g => g.favorite).sort((a, b) => {
-    const byKind = rank(a) - rank(b);
-    if (byKind) return byKind;
-    return (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0);
+  const used = new Set();
+  const ordered = [];
+  (settings.favoriteTeams || []).forEach((fav, index) => {
+    const mine = games.filter(g => !used.has(g) && gameHasFavorite(g, fav));
+    if (!mine.length) return;
+    const live = mine.filter(g => g.isLive).sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const recent = mine.filter(g => !g.isLive && !g.isUpcoming && !g.scheduledNext)
+      .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+    const next = mine.filter(g => !g.isLive && (g.scheduledNext || g.isUpcoming))
+      .sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
+    const block = [];
+    if (live[0]) block.push(live[0]);
+    if (recent[0] && !block.some(g => g.date === recent[0].date && g.away === recent[0].away && g.home === recent[0].home)) block.push(recent[0]);
+    if (next[0] && !block.some(g => g.date === next[0].date && g.away === next[0].away && g.home === next[0].home)) block.push(next[0]);
+    block.forEach(g => {
+      g.favorite = true;
+      g.blockId = `${fav.league}:${fav.abbr}:${index}`;
+      used.add(g);
+      ordered.push(g);
+    });
   });
-  const restOn = (g) => (settings.restLeagues || []).includes(g.leagueKey) && (settings.sportsLeagues || []).includes(g.leagueKey);
-  const rest = games.filter(g => !g.favorite && restOn(g)).sort((a, b) => rank(a) - rank(b) || (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0));
-  return favorites.concat(rest);
+  const restOn = g => (settings.restLeagues || []).includes(g.leagueKey) && (settings.sportsLeagues || []).includes(g.leagueKey);
+  games.filter(g => !used.has(g) && restOn(g)).forEach((g, i) => {
+    g.blockId = `rest:${g.leagueKey}:${g.date}:${g.away}:${g.home}:${i}`;
+    ordered.push(g);
+  });
+  return ordered;
 }
 
 function sportsPages(visible) {
+  const blocks = [];
+  sportsItems.forEach(game => {
+    const id = game.blockId || `${game.leagueKey}:${game.date}:${game.away}:${game.home}`;
+    const last = blocks[blocks.length - 1];
+    if (last && last.id === id) last.rows.push(game);
+    else blocks.push({ id, rows: [game], live: !!game.isLive });
+  });
   const live = sportsItems.filter(g => g.isLive);
-  const others = sportsItems.filter(g => !g.isLive);
-  const chunk = (list, size) => {
-    const pages = [];
-    for (let i = 0; i < list.length; i += size) pages.push(list.slice(i, i + size));
-    return pages.length ? pages : [[]];
-  };
-  if (!live.length) return chunk(others, visible);
-  if (visible < 2) return chunk(live.concat(others), 1);
-  const pinCount = Math.min(live.length, visible - 1);
+  const pinCount = visible >= 3 ? Math.min(live.length, visible - 2) : 0;
   const pinned = live.slice(0, pinCount);
-  const rotating = live.slice(pinCount).concat(others);
-  if (!rotating.length) return chunk(live, visible);
-  const slots = visible - pinned.length;
+  const rotating = [];
+  blocks.forEach(block => {
+    const rows = block.rows.filter(g => !pinned.includes(g));
+    if (rows.length) rotating.push(rows);
+  });
+  if (!rotating.length) {
+    const pages = [];
+    for (let i = 0; i < live.length; i += visible) pages.push(live.slice(i, i + visible));
+    return pages.length ? pages : [[]];
+  }
+  const slots = Math.max(1, visible - pinned.length);
   const pages = [];
-  for (let i = 0; i < rotating.length; i += slots) pages.push(pinned.concat(rotating.slice(i, i + slots)));
+  let page = [];
+  rotating.forEach(rows => {
+    let chunk = rows.slice();
+    while (chunk.length) {
+      const room = slots - page.length;
+      if (room <= 0) {
+        pages.push(pinned.concat(page));
+        page = [];
+        continue;
+      }
+      if (chunk.length > room && page.length) {
+        pages.push(pinned.concat(page));
+        page = [];
+        continue;
+      }
+      const take = chunk.splice(0, room);
+      page.push(...take);
+      if (page.length === slots) {
+        pages.push(pinned.concat(page));
+        page = [];
+      }
+    }
+  });
+  if (page.length) pages.push(pinned.concat(page));
   return pages;
+}
+
+function sportsCards() {
+  const cards = [];
+  const now = Date.now();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const recentMs = 36 * 60 * 60 * 1000;
+  (settings.favoriteTeams || []).forEach(fav => {
+    const mine = sportsItems.filter(g => gameHasFavorite(g, fav));
+    const live = mine.find(g => g.isLive);
+    const recent = mine.filter(g => {
+      if (g.isLive || g.isUpcoming || g.scheduledNext || g.state === 'pre') return false;
+      const t = Date.parse(g.date);
+      return !Number.isNaN(t) && t <= now && now - t <= recentMs;
+    }).sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0))[0];
+    const next = mine.filter(g => {
+      if (g.isLive) return false;
+      const t = Date.parse(g.date);
+      return !Number.isNaN(t) && t > now && t - now <= weekMs;
+    }).sort((a, b) => (Date.parse(a.date) || 0) - (Date.parse(b.date) || 0))[0];
+    const games = [];
+    if (recent && recent !== live) games.push(recent);
+    if (live) games.push(live);
+    if (next && next !== live && next !== recent) games.push(next);
+    if (games.length) cards.push({ fav, games });
+  });
+  const owned = new Set(cards.flatMap(card => card.games));
+  sportsItems.filter(g => !owned.has(g) && gameInWindow(g)).forEach(g => cards.push({ fav: null, games: [g] }));
+  cards.sort((a, b) => {
+    const rank = card => card.games.some(g => !g.isLive && !g.isUpcoming && !g.scheduledNext && g.state !== 'pre') ? 0 : (card.games.some(g => g.isLive) ? 1 : 2);
+    return rank(a) - rank(b);
+  });
+  return cards;
 }
 
 function renderSports() {
   const el = document.getElementById('sports-content');
-  if (!sportsItems.length) {
+  const cards = sportsCards();
+  if (!cards.length) {
     el.innerHTML = `<div class="error">${(settings.favoriteTeams || []).length ? 'No games for your favorite teams right now.' : 'No games available right now.'}</div>`;
     return;
   }
-  const itemH = 74;
+  const itemH = 108;
   const visible = howMany(el, itemH, 'sports');
   if (!visible) { requestAnimationFrame(renderSports); return; }
-  const pages = sportsPages(visible);
+  const pages = [];
+  for (let i = 0; i < cards.length; i += visible) pages.push(cards.slice(i, i + visible));
   const page = (window.sportsStart || 0) % pages.length;
   const slice = pages[page];
-  const side = (abbr, score, record, logo, favorite, flip) => `
+  const side = (abbr, score, record, logo, favorite, flip, showScore) => `
     <div class="sport-side${flip ? ' sport-home' : ''}">
       ${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ''}
       <div>
-        <div class="sport-name">${favorite ? '★ ' : ''}${abbr}${score !== '' ? ` <strong>${score}</strong>` : ''}</div>
+        <div class="sport-name">${favorite ? '★ ' : ''}${abbr}${showScore && score !== '' ? ` <strong>${score}</strong>` : ''}</div>
         ${record ? `<div class="sport-rec">${record}</div>` : ''}
       </div>
     </div>`;
-  el.innerHTML = `<div class="items-scroller">${slice.map(g => `
-    <div class="item sport-row${g.isLive ? ' sport-live' : ''}${g.favorite ? ' sport-fav' : ''}">
-      ${side(g.away, g.isUpcoming ? '' : g.awayScore, g.awayRecord, g.awayLogo, isFavoriteTeam(g.leagueKey, g.away, '', g.awayName, ''), false)}
+  const line = g => {
+    const showScore = !g.isUpcoming || g.isLive;
+    return `<div class="sport-line${g.isLive ? ' sport-live' : ''}${g.favorite ? ' sport-fav' : ''}">
+      ${side(g.away, g.awayScore, g.awayRecord, g.awayLogo, isFavoriteTeam(g.leagueKey, g.away, '', g.awayName, ''), false, showScore)}
       <span class="sport-mid">–</span>
-      ${side(g.home, g.isUpcoming ? '' : g.homeScore, g.homeRecord, g.homeLogo, isFavoriteTeam(g.leagueKey, '', g.home, '', g.homeName), true)}
+      ${side(g.home, g.homeScore, g.homeRecord, g.homeLogo, isFavoriteTeam(g.leagueKey, '', g.home, '', g.homeName), true, showScore)}
       <div class="meta sport-status${g.isLive ? ' live' : ''}">
-        ${g.isLive ? '🔴 LIVE · ' : (g.isUpcoming ? 'NEXT · ' : '')}${g.league}<br>${g.statusDetail || g.status}
+        ${g.isLive ? '🔴 LIVE · ' : (g.isUpcoming ? 'NEXT · ' : 'FINAL · ')}${g.league}<br>${g.statusDetail || g.status}
       </div>
-    </div>
+    </div>`;
+  };
+  el.innerHTML = `<div class="items-scroller">${slice.map(card => `
+    <div class="item sport-card">${card.fav ? `<div class="sport-team">${card.fav.name} · ${card.fav.league.toUpperCase()}</div>` : ''}${card.games.map(line).join('')}</div>
   `).join('')}</div>${dotsHtml(pages.length, 1, page, 'sports')}`;
   tightenIfOverflow(el, 'sports', renderSports);
   clearInterval(rotationTimers.sports);
