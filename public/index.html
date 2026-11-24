@@ -69,8 +69,8 @@ header h1 { margin: 0; font-size: 1.25rem; }
   grid-auto-rows: minmax(0, 1fr);
 }
 .dashboard.mode-fixed {
-  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 3), minmax(0, 1fr));
   grid-auto-rows: minmax(0, 1fr);
 }
 @media (max-width: 1180px), ((pointer: coarse) and (max-width: 1400px)) {
@@ -275,7 +275,7 @@ img.thumb-wait { visibility: hidden; }
   border: 1px solid var(--border);
 }
 .settings-tabs .tab.on { background: var(--accent); color: white; border-color: var(--accent); }
-#tab-feeds.hidden, #tab-layout.hidden, #tab-teams.hidden { display: none; }
+#tab-feeds.hidden, #tab-layout.hidden, #tab-markets.hidden, #tab-clocks.hidden, #tab-teams.hidden { display: none; }
 .score { font-weight: 600; }
 .change-up { color: var(--green); }
 .change-down { color: var(--red); }
@@ -437,6 +437,10 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <h2>🏆 Sports</h2>
     <div class="panel-content" id="sports-content"><div class="loading">Loading scores…</div></div>
   </section>
+  <section class="panel" id="sportnews-panel">
+    <h2>🗞️ Sports News</h2>
+    <div class="panel-content" id="sportnews-content"><div class="loading">Loading sports news…</div></div>
+  </section>
   <section class="panel" id="weather-panel">
     <h2>🌤️ Weather</h2>
     <div class="panel-content" id="weather-content"><div class="loading">Loading weather…</div></div>
@@ -466,7 +470,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
   </section>
 </main>
-<footer>v100 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v104 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -474,6 +478,8 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="settings-tabs">
       <button type="button" class="tab on" data-tab="layout">Layout</button>
       <button type="button" class="tab" data-tab="feeds">Feeds</button>
+      <button type="button" class="tab" data-tab="markets">Markets</button>
+      <button type="button" class="tab" data-tab="clocks">Clocks</button>
       <button type="button" class="tab" data-tab="teams">Teams</button>
     </div>
     <div id="tab-layout">
@@ -484,9 +490,9 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
       </select>
       <div id="canvas-fixed-fields">
         <label>Columns</label>
-        <input type="number" id="canvas-cols" min="1" max="6" value="3">
+        <input type="number" id="canvas-cols" min="1" max="6" value="6">
         <label>Rows</label>
-        <input type="number" id="canvas-rows" min="1" max="6" value="2">
+        <input type="number" id="canvas-rows" min="1" max="6" value="3">
       </div>
       <p class="hint">Columns and rows apply in Fixed mode. In Auto, columns follow the window. A 1×1 widget stretches into leftover space. Drag the handle to reorder.</p>
       <label>Widgets — show, and size</label>
@@ -497,11 +503,10 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="checkbox-group" id="outlets-group"></div>
     <label>News Categories</label>
     <div class="checkbox-group" id="categories-group"></div>
+    <label>Sports News feeds</label>
+    <div class="checkbox-group" id="sportnews-feeds"></div>
     <label>Weather Location</label>
     <input type="text" id="weather-location" placeholder="City, e.g. Los Angeles">
-    <label>World clocks</label>
-    <input type="search" id="clock-search" placeholder="Search cities, e.g. Tokyo, London, Cairo">
-    <div id="clock-list" class="team-list"></div>
     <label>Local News Location (defaults to weather location)</label>
     <input type="text" id="local-news-location" placeholder="City for local news">
     <label>International News Country</label>
@@ -539,14 +544,23 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     </select>
     <label>Motivation sources</label>
     <div class="checkbox-group" id="motive-group"></div>
-    <label>Stock Tickers (comma-separated, e.g. AAPL, MSFT, SPY, ^GSPC)</label>
-    <textarea id="stocks-list" placeholder="AAPL, MSFT, GOOGL, ..."></textarea>
     <label>Content rotation speed (seconds)</label>
     <input type="number" id="rotation-seconds" min="5" max="120" value="10">
-    <label>World clock rotation (seconds)</label>
-    <input type="number" id="clock-rotation" min="5" max="120" value="15">
     <label>Max news age (hours, older items hidden)</label>
     <input type="number" id="max-age" min="1" max="168" value="24">
+    </div>
+    <div id="tab-markets" class="hidden">
+      <label>Stock tickers (comma-separated, e.g. AAPL, MSFT, SPY, ^GSPC)</label>
+      <textarea id="stocks-list" placeholder="AAPL, MSFT, GOOGL, ..."></textarea>
+      <label>Business news feeds</label>
+      <div class="checkbox-group" id="business-feeds"></div>
+    </div>
+    <div id="tab-clocks" class="hidden">
+      <label>World clocks</label>
+      <input type="search" id="clock-search" placeholder="Search cities, e.g. Tokyo, London, Cairo">
+      <div id="clock-list" class="team-list"></div>
+      <label>World clock rotation (seconds)</label>
+      <input type="number" id="clock-rotation" min="5" max="120" value="15">
     </div>
     <div id="tab-teams" class="hidden">
       <p class="hint">Each tab is one league. Star the teams you want pinned. “Rest of” is per league and saves automatically.</p>
@@ -569,6 +583,7 @@ const defaultSettings = {
   outlets: ['fox', 'cnn', 'reuters'],
   categories: ['politics', 'tech', 'business'],
   sportsLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
+  sportNewsLeagues: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'ncaaf', 'ncaab'],
   favoriteTeams: [],
   restLeagues: [],
   weatherLocation: 'Los Angeles',
@@ -590,6 +605,7 @@ const defaultSettings = {
     local: { visible: true, size: '1x1' },
     intl: { visible: true, size: '1x1' },
     sports: { visible: true, size: '1x1' },
+    sportnews: { visible: true, size: '1x1' },
     weather: { visible: true, size: '1x1' },
     stocks: { visible: true, size: '1x1' },
     markets: { visible: true, size: '1x2' },
@@ -598,7 +614,7 @@ const defaultSettings = {
     headlines: { visible: true, size: '2x1' },
     motive: { visible: true, size: '1x1' }
   },
-  canvas: { mode: 'auto', columns: 3, rows: 2 }
+  canvas: { mode: 'fixed', columns: 6, rows: 3 }
 };
 
 const WIDGET_IDS = {
@@ -606,6 +622,7 @@ const WIDGET_IDS = {
   local: ['local-news-panel', 'Local News'],
   intl: ['intl-news-panel', 'International'],
   sports: ['sports-panel', 'Sports'],
+  sportnews: ['sportnews-panel', 'Sports News'],
   weather: ['weather-panel', 'Weather'],
   stocks: ['stocks-panel', 'Stocks'],
   markets: ['markets-panel', 'Business'],
@@ -616,7 +633,7 @@ const WIDGET_IDS = {
 };
 
 const REFRESH_DEFAULTS = {
-  news: 600, local: 600, intl: 600, headlines: 600,
+  news: 600, local: 600, intl: 600, headlines: 600, sportnews: 600,
   sports: 60, weather: 300, stocks: 60, markets: 600, tech: 300, clocks: 15, motive: 600
 };
 
@@ -632,7 +649,9 @@ function ensureWidgets() {
   settings.widgetOrder = settings.widgetOrder.filter(k => known.includes(k));
   for (const key of known) {
     if (settings.widgetOrder.includes(key)) continue;
-    const after = key === 'markets' ? settings.widgetOrder.indexOf('stocks') : -1;
+    const after = key === 'markets' ? settings.widgetOrder.indexOf('stocks')
+      : key === 'sportnews' ? settings.widgetOrder.indexOf('sports')
+      : -1;
     if (after >= 0) settings.widgetOrder.splice(after + 1, 0, key);
     else settings.widgetOrder.push(key);
   }
@@ -703,7 +722,7 @@ function packWidgets(items, cols, rowLimit, growVertical) {
 
 function measuredColumns(board) {
   const raw = getComputedStyle(board).gridTemplateColumns;
-  if (!raw || raw === 'none') return Math.max(1, settings.canvas.columns || 3);
+  if (!raw || raw === 'none') return Math.max(1, settings.canvas.columns || 6);
   const tracks = raw.split(' ').filter(t => t && t !== 'none');
   return Math.max(1, tracks.length || 1);
 }
@@ -713,8 +732,8 @@ function applyLayout() {
   const board = document.getElementById('dashboard');
   if (!board) return;
   const fixed = settings.canvas.mode === 'fixed';
-  const cols = Math.max(1, Math.min(6, parseInt(settings.canvas.columns, 10) || 3));
-  const rows = Math.max(1, Math.min(6, parseInt(settings.canvas.rows, 10) || 2));
+  const cols = Math.max(1, Math.min(6, parseInt(settings.canvas.columns, 10) || 6));
+  const rows = Math.max(1, Math.min(6, parseInt(settings.canvas.rows, 10) || 3));
   settings.canvas.columns = cols;
   settings.canvas.rows = rows;
   board.classList.toggle('mode-fixed', fixed);
@@ -769,6 +788,13 @@ const outletFeeds = {
     latest: 'https://openrss.org/feed/www.reuters.com'
   }
 };
+
+const BUSINESS_FEEDS = [
+  ['cnbc', 'CNBC', 'https://www.cnbc.com/id/10000664/device/rss/rss.html'],
+  ['reuters', 'Reuters', 'https://openrss.org/feed/www.reuters.com/business'],
+  ['cnn', 'CNN', 'https://openrss.org/feed/www.cnn.com/business'],
+  ['bbc', 'BBC', 'https://feeds.bbci.co.uk/news/business/rss.xml']
+];
 
 const leagueMap = {
   nfl: { sport: 'football', league: 'nfl', name: 'NFL' },
@@ -872,6 +898,14 @@ function loadSettings() {
   if (!Array.isArray(settings.restLeagues)) settings.restLeagues = [];
   if (!Array.isArray(settings.motiveSources) || !settings.motiveSources.length) {
     settings.motiveSources = defaultSettings.motiveSources.slice();
+  }
+  if ((settings.canvasDefaultVersion || 0) < 2) {
+    settings.canvas = { ...defaultSettings.canvas, ...(settings.canvas || {}), mode: 'fixed', columns: 6, rows: 3 };
+    settings.canvasDefaultVersion = 2;
+    saveSettings();
+  }
+  if (!Array.isArray(settings.businessFeeds) || !settings.businessFeeds.length) {
+    settings.businessFeeds = BUSINESS_FEEDS.map(feed => feed[0]);
   }
 }
 
@@ -1010,7 +1044,7 @@ async function loadNews(quiet) {
   renderNews();
 }
 
-const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, stocks: 0, markets: 0, tech: 0, clocks: 0 };
+const fitNudge = { news: 0, local: 0, intl: 0, sports: 0, sportnews: 0, stocks: 0, markets: 0, tech: 0, clocks: 0 };
 
 function nextPageStart(start, total, visible) {
   const size = Math.max(1, visible);
@@ -1041,6 +1075,7 @@ function jumpRotation(key, start) {
     local: () => { window.localStart = at; renderLocalNews(); },
     intl: () => { window.intlStart = at; renderIntlNews(); },
     sports: () => { window.sportsStart = at; renderSports(); },
+    sportnews: () => { window.sportnewsStart = at; renderSportNews(); },
     stocks: () => { window.stocksStart = at; renderStocks(); },
     clocks: () => { window.clocksStart = at; renderClocks(); },
     tech: () => { window.techStart = at; renderTech(); },
@@ -1266,6 +1301,85 @@ function renderIntlNews() {
     rotationTimers.intl = setInterval(() => {
       window.intlStart = nextPageStart(window.intlStart || 0, intlNewsItems.length, visible);
       renderIntlNews();
+    }, settings.rotationSeconds * 1000);
+  }
+}
+
+let sportNewsItems = [];
+
+async function loadSportNews(quiet) {
+  const content = document.getElementById('sportnews-content');
+  if (!content) return;
+  if (!quiet) content.innerHTML = '<div class="loading">Loading sports news…</div>';
+  const leagues = (settings.sportNewsLeagues && settings.sportNewsLeagues.length)
+    ? settings.sportNewsLeagues
+    : Object.keys(leagueMap);
+  const results = await Promise.all(leagues.map(async lg => {
+    const info = leagueMap[lg];
+    if (!info) return [];
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${info.sport}/${info.league}/news?limit=8`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.articles || []).map(article => {
+        const image = (article.images || []).find(img => img.url) || {};
+        return {
+          title: article.headline || '',
+          summary: (article.description || '').replace(/<[^>]*>/g, '').trim(),
+          link: article.links?.web?.href || '',
+          image: image.url || '',
+          source: `ESPN · ${info.name}`,
+          pubDate: article.published || article.lastModified || ''
+        };
+      });
+    } catch (e) {
+      return [];
+    }
+  }));
+  const maxAgeMs = (settings.maxNewsAgeHours || 24) * 60 * 60 * 1000;
+  const now = Date.now();
+  const seen = new Set();
+  sportNewsItems = results.flat().filter(item => {
+    if (!item.title || seen.has(item.title)) return false;
+    seen.add(item.title);
+    if (!item.pubDate) return true;
+    const t = new Date(item.pubDate).getTime();
+    return !Number.isNaN(t) && now - t < maxAgeMs;
+  }).sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0));
+  if (!quiet) window.sportnewsStart = 0;
+  renderSportNews();
+}
+
+function renderSportNews() {
+  const el = document.getElementById('sportnews-content');
+  if (!el) return;
+  if (!sportNewsItems.length) {
+    el.innerHTML = '<div class="error">No sports news. Choose feeds in Settings.</div>';
+    return;
+  }
+  const itemH = 150;
+  const visible = howMany(el, itemH, 'sportnews');
+  if (!visible) { requestAnimationFrame(renderSportNews); return; }
+  const start = Math.floor((window.sportnewsStart || 0) / visible) * visible;
+  window.sportnewsStart = start >= sportNewsItems.length ? 0 : start;
+  const slice = sportNewsItems.slice(window.sportnewsStart, window.sportnewsStart + visible);
+  el.innerHTML = `<div class="items-scroller">${slice.map(item => `
+    <div class="item news-item">
+      ${item.image ? `<img class="news-thumb" src="${item.image}" alt="" onerror="this.style.display='none'">` : ''}
+      <div class="news-headline"><img src="https://www.google.com/s2/favicons?domain=espn.com&sz=32" alt="" onerror="this.style.display='none'"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></div>
+      ${item.summary ? `<div class="meta" style="margin-top:0.2rem;opacity:0.85;">${item.summary.slice(0, 140)}${item.summary.length > 140 ? '…' : ''}</div>` : ''}
+      <div class="meta">${item.source}${item.pubDate ? ' · ' + new Date(item.pubDate).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</div>
+    </div>
+  `).join('')}</div>${dotsHtml(sportNewsItems.length, visible, window.sportnewsStart, 'sportnews')}`;
+  el._refit = () => tightenIfOverflow(el, 'sportnews', renderSportNews);
+  bindThumbs(el);
+  tightenIfOverflow(el, 'sportnews', renderSportNews);
+  clearInterval(rotationTimers.sportnews);
+  clearTimeout(rotationTimers.sportnewsWait);
+  if (sportNewsItems.length > visible) {
+    rotationTimers.sportnews = setInterval(() => {
+      window.sportnewsStart = nextPageStart(window.sportnewsStart || 0, sportNewsItems.length, visible);
+      renderSportNews();
     }, settings.rotationSeconds * 1000);
   }
 }
@@ -2069,11 +2183,9 @@ function renderStocks() {
   const itemH = 52;
   const visible = howMany(el, itemH, 'stocks');
   if (!visible) { requestAnimationFrame(renderStocks); return; }
-  const start = window.stocksStart || 0;
-  const slice = stockItems.slice(start, start + visible);
-  if (slice.length < visible && stockItems.length > visible) {
-    slice.push(...stockItems.slice(0, visible - slice.length));
-  }
+  const start = Math.floor((window.stocksStart || 0) / visible) * visible;
+  window.stocksStart = start >= stockItems.length ? 0 : start;
+  const slice = stockItems.slice(window.stocksStart, window.stocksStart + visible);
   el.innerHTML = `<div class="items-scroller">${slice.map(s => {
     if (s.error) return `<div class="item error">${s.symbol}: unavailable</div>`;
     const cls = s.change >= 0 ? 'change-up' : 'change-down';
@@ -2104,7 +2216,7 @@ function renderStocks() {
       const el = document.getElementById('stocks-content');
       el.classList.add('fading');
       rotationTimers.stocksWait = setTimeout(() => {
-        window.stocksStart = ((window.stocksStart || 0) + 1) % stockItems.length;
+        window.stocksStart = nextPageStart(window.stocksStart || 0, stockItems.length, visible);
         renderStocks();
         el.classList.remove('fading');
       }, 200);
@@ -2137,6 +2249,14 @@ function setupSettingsUI() {
   const motiveOn = settings.motiveSources || defaultSettings.motiveSources;
   document.getElementById('motive-group').innerHTML = MOTIVE_SOURCES.map(([id, label]) =>
     `<label><input type="checkbox" value="${id}" ${motiveOn.includes(id) ? 'checked' : ''}> ${label}</label>`
+  ).join('');
+  const sportFeeds = settings.sportNewsLeagues || defaultSettings.sportNewsLeagues;
+  document.getElementById('sportnews-feeds').innerHTML = LEAGUE_TABS.map(([id, label]) =>
+    `<label><input type="checkbox" value="${id}" ${sportFeeds.includes(id) ? 'checked' : ''}> ${label}</label>`
+  ).join('');
+  const businessOn = settings.businessFeeds || BUSINESS_FEEDS.map(feed => feed[0]);
+  document.getElementById('business-feeds').innerHTML = BUSINESS_FEEDS.map(([id, label]) =>
+    `<label><input type="checkbox" value="${id}" ${businessOn.includes(id) ? 'checked' : ''}> ${label}</label>`
   ).join('');
   document.getElementById('rotation-seconds').value = settings.rotationSeconds;
   document.getElementById('clock-rotation').value = settings.clockRotationSeconds || 15;
@@ -2266,6 +2386,10 @@ function applySettings() {
   settings.outlets = [...document.querySelectorAll('#outlets-group input:checked')].map(i => i.value);
   settings.categories = [...document.querySelectorAll('#categories-group input:checked')].map(i => i.value);
   settings.sportsLeagues = [...leagueOn];
+  const sportFeedBoxes = [...document.querySelectorAll('#sportnews-feeds input')];
+  if (sportFeedBoxes.length) settings.sportNewsLeagues = sportFeedBoxes.filter(i => i.checked).map(i => i.value);
+  const businessBoxes = [...document.querySelectorAll('#business-feeds input')];
+  if (businessBoxes.length) settings.businessFeeds = businessBoxes.filter(i => i.checked).map(i => i.value);
   settings.favoriteTeams = [...teamPick].map(id => {
     const [league, abbr] = id.split(':');
     const found = (TEAMS[league] || []).find(t => t[0] === abbr);
@@ -2291,8 +2415,8 @@ function applySettings() {
   settings.clockRotationSeconds = Math.max(5, parseInt(document.getElementById('clock-rotation').value) || 15);
   settings.maxNewsAgeHours = Math.max(1, parseInt(document.getElementById('max-age').value) || 24);
   settings.canvas.mode = document.getElementById('canvas-mode').value === 'fixed' ? 'fixed' : 'auto';
-  settings.canvas.columns = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-cols').value, 10) || 3));
-  settings.canvas.rows = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-rows').value, 10) || 2));
+  settings.canvas.columns = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-cols').value, 10) || 6));
+  settings.canvas.rows = Math.max(1, Math.min(6, parseInt(document.getElementById('canvas-rows').value, 10) || 3));
   document.querySelectorAll('#widget-settings input[data-widget]').forEach(input => {
     const key = input.dataset.widget;
     if (!settings.widgets[key]) settings.widgets[key] = { visible: true, size: '1x1' };
@@ -2702,10 +2826,19 @@ async function loadMarkets(quiet) {
   if (!quiet) content.innerHTML = '<div class="loading">Loading business news…</div>';
   const mine = new Set((settings.stocks || []).map(s => String(s).toUpperCase()).filter(s => s && !s.startsWith('^')));
   const large = 10000000000;
-  const [news, calendars] = await Promise.all([
-    fetchRSS('https://www.cnbc.com/id/10000664/device/rss/rss.html'),
+  const [newsLists, calendars] = await Promise.all([
+    Promise.all((settings.businessFeeds || BUSINESS_FEEDS.map(feed => feed[0])).map(id => {
+      const feed = BUSINESS_FEEDS.find(item => item[0] === id);
+      return feed ? fetchRSS(feed[2]) : [];
+    })),
     Promise.all(marketDates(8).map(date => fetchEarningsDay(date)))
   ]);
+  const seenNews = new Set();
+  const news = newsLists.flat().filter(item => {
+    if (!item.title || seenNews.has(item.title)) return false;
+    seenNews.add(item.title);
+    return true;
+  });
   const seen = new Set();
   const earnings = calendars.flat().filter(row => {
     const symbol = String(row.symbol || '').toUpperCase();
@@ -2893,7 +3026,7 @@ async function refreshAll(opts) {
   const failedStocks = stockItems.some(s => s.error);
   const skipStocks = opts && opts.skipClosedStocks && stockItems.length && !failedStocks && !marketIsLive();
   await Promise.all([
-    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadMarkets(), loadSports(), loadWeather(), loadMotive(),
+    loadNews(), loadLocalNews(), loadIntlNews(), loadHeadlines(), loadTech(), loadMarkets(), loadSports(), loadSportNews(), loadWeather(), loadMotive(),
     skipStocks ? Promise.resolve() : loadStocks()
   ]);
 }
@@ -2961,9 +3094,10 @@ document.querySelector('.settings-tabs').addEventListener('click', e => {
   const btn = e.target.closest('.tab');
   if (!btn || !btn.dataset.tab) return;
   document.querySelectorAll('.modal-content > .settings-tabs .tab').forEach(b => b.classList.toggle('on', b === btn));
-  document.getElementById('tab-layout').classList.toggle('hidden', btn.dataset.tab !== 'layout');
-  document.getElementById('tab-feeds').classList.toggle('hidden', btn.dataset.tab !== 'feeds');
-  document.getElementById('tab-teams').classList.toggle('hidden', btn.dataset.tab !== 'teams');
+  ['layout', 'feeds', 'markets', 'clocks', 'teams'].forEach(name => {
+    const pane = document.getElementById('tab-' + name);
+    if (pane) pane.classList.toggle('hidden', btn.dataset.tab !== name);
+  });
 });
 document.getElementById('league-tabs').addEventListener('click', e => {
   const btn = e.target.closest('[data-league]');
@@ -3043,7 +3177,7 @@ function scheduleRefreshes() {
   Object.values(window.widgetRefreshTimers).forEach(clearInterval);
   const loaders = {
     news: loadNews, local: loadLocalNews, intl: loadIntlNews, headlines: loadHeadlines,
-    sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech, motive: loadMotive
+    sports: loadSports, weather: loadWeather, stocks: loadStocks, markets: loadMarkets, tech: loadTech, motive: loadMotive, sportnews: loadSportNews
   };
   Object.entries(loaders).forEach(([key, fn]) => {
     const sec = Math.max(15, parseInt(settings.widgets[key]?.refreshSeconds, 10) || REFRESH_DEFAULTS[key] || 60);
@@ -3063,6 +3197,7 @@ function refitPanels() {
   renderLocalNews();
   renderIntlNews();
   renderSports();
+  renderSportNews();
   renderStocks();
   renderMarkets();
   renderWeather();
