@@ -17,6 +17,43 @@ export default {
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=900', ...corsHeaders() }
       });
     }
+    if (url.pathname === '/api/ambient') {
+      if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
+      const app = env.AMBIENT_APPLICATION_KEY;
+      const api = env.AMBIENT_API_KEY;
+      if (!app || !api) {
+        return new Response(JSON.stringify({ error: 'not configured' }), { status: 503, headers: { 'content-type': 'application/json', ...corsHeaders() } });
+      }
+      const upstream = await fetch(`https://rt.ambientweather.net/v1/devices?applicationKey=${encodeURIComponent(app)}&apiKey=${encodeURIComponent(api)}`);
+      if (!upstream.ok) {
+        return new Response(JSON.stringify({ error: 'upstream' }), { status: upstream.status, headers: { 'content-type': 'application/json', ...corsHeaders() } });
+      }
+      const devices = await upstream.json();
+      const device = Array.isArray(devices) ? devices[0] : null;
+      const last = (device && device.lastData) || {};
+      const body = {
+        name: device && device.info && device.info.name,
+        tempf: last.tempf,
+        feelsLike: last.feelsLike,
+        humidity: last.humidity,
+        dewPoint: last.dewPoint,
+        windspeedmph: last.windspeedmph,
+        windgustmph: last.windgustmph,
+        winddir: last.winddir,
+        hourlyrainin: last.hourlyrainin,
+        dailyrainin: last.dailyrainin,
+        baromrelin: last.baromrelin,
+        uv: last.uv,
+        solarradiation: last.solarradiation,
+        tempinf: last.tempinf,
+        humidityin: last.humidityin,
+        date: last.date,
+        dateutc: last.dateutc
+      };
+      return new Response(JSON.stringify(body), {
+        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=30', ...corsHeaders() }
+      });
+    }
     if (url.pathname === '/api/quote') {
       if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders() });
       const symbol = url.searchParams.get('symbol') || '';
