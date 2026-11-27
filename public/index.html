@@ -213,9 +213,12 @@ img.thumb-wait { visibility: hidden; }
 .earn-row { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
 .earn-badge { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #60a5fa; margin-right: 0.35rem; vertical-align: 1px; }
 .earn-legend { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 0.15rem; font-size: 0.68rem; opacity: 0.85; padding-top: 0.28rem; }
-.stock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.55rem; }
-.stock-label { flex: 0 0 auto; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.spark { flex: 1 1 3rem; width: auto; min-width: 2.4rem; max-width: 100%; height: 26px; display: block; }
+.stock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.7rem; }
+.stock-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spark { flex: 0 0 clamp(6.25rem, 34%, 8.5rem); width: clamp(6.25rem, 34%, 8.5rem); height: 50px; max-width: 100%; margin-left: auto; display: block; }
+@container widget (max-width: 240px) {
+  .spark { flex: 1 0 100%; width: 100%; height: 44px; margin-left: 0; }
+}
 .meta { font-size: 0.75rem; opacity: 0.7; margin-top: 0.15rem; overflow-wrap: anywhere; }
 @container widget (max-width: 340px) {
   h2 { font-size: 0.85rem; margin-bottom: 0.3rem; }
@@ -489,7 +492,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
   </section>
 </main>
-<footer>v113 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Home station via Ambient Weather · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v115 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Home station via Ambient Weather · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -1938,13 +1941,25 @@ function renderSports() {
     el.innerHTML = `<div class="error">${(settings.favoriteTeams || []).length ? 'No games for your favorite teams right now.' : 'No games available right now.'}</div>`;
     return;
   }
-  const itemH = 108;
+  const itemH = 84;
   const visible = howMany(el, itemH, 'sports');
   if (!visible) { requestAnimationFrame(renderSports); return; }
+  const rows = [];
+  cards.forEach(card => card.games.forEach(game => rows.push({ game, fav: card.fav, live: !!game.isLive })));
+  const liveRows = rows.filter(row => row.live);
+  const restRows = rows.filter(row => !row.live);
+  const pinCount = rows.length > liveRows.length || liveRows.length > 1
+    ? Math.min(3, liveRows.length, Math.max(0, visible - 1))
+    : 0;
+  const pinned = liveRows.slice(0, pinCount);
+  const rotating = restRows.concat(liveRows.slice(pinCount));
+  const slots = Math.max(1, visible - pinned.length);
   const pages = [];
-  for (let i = 0; i < cards.length; i += visible) pages.push(cards.slice(i, i + visible));
+  if (rotating.length) {
+    for (let i = 0; i < rotating.length; i += slots) pages.push(rotating.slice(i, i + slots));
+  } else pages.push([]);
   const page = (window.sportsStart || 0) % pages.length;
-  const slice = pages[page];
+  const shown = pinned.concat(pages[page]);
   const side = (abbr, score, record, logo, favorite, flip, showScore) => `
     <div class="sport-side${flip ? ' sport-home' : ''}">
       ${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ''}
@@ -1964,9 +1979,13 @@ function renderSports() {
       </div>
     </div>`;
   };
-  el.innerHTML = `<div class="items-scroller">${slice.map(card => `
-    <div class="item sport-card">${card.fav ? `<div class="sport-team">${card.fav.name} · ${card.fav.league.toUpperCase()}</div>` : ''}${card.games.map(line).join('')}</div>
-  `).join('')}</div>${dotsHtml(pages.length, 1, page, 'sports')}`;
+  let lastFav = '';
+  el.innerHTML = `<div class="items-scroller">${shown.map(row => {
+    const favKey = row.fav ? `${row.fav.league}:${row.fav.abbr}` : '';
+    const showHeader = !!(favKey && favKey !== lastFav);
+    lastFav = favKey;
+    return `<div class="item sport-card${row.live ? ' sport-pinned' : ''}">${showHeader ? `<div class="sport-team">${row.fav.name} · ${row.fav.league.toUpperCase()}</div>` : ''}${line(row.game)}</div>`;
+  }).join('')}</div>${dotsHtml(pages.length, 1, page, 'sports')}`;
   tightenIfOverflow(el, 'sports', renderSports);
   clearInterval(rotationTimers.sports);
   clearTimeout(rotationTimers.sportsWait);
@@ -2352,7 +2371,7 @@ function renderStocks() {
     el.innerHTML = '<div class="error">No stock data.</div>';
     return;
   }
-  const itemH = 52;
+  const itemH = 68;
   const visible = howMany(el, itemH, 'stocks');
   if (!visible) { requestAnimationFrame(renderStocks); return; }
   const start = Math.floor((window.stocksStart || 0) / visible) * visible;
@@ -2368,11 +2387,11 @@ function renderStocks() {
       const max = Math.max(...s.closes);
       const range = max - min || 1;
       const points = s.closes.map((c, i) => {
-        const x = (i / (s.closes.length - 1)) * 80;
-        const y = 30 - ((c - min) / range) * 25;
-        return `${x},${y}`;
+        const x = (i / (s.closes.length - 1)) * 100;
+        const y = 46 - ((c - min) / range) * 40;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(' ');
-      spark = `<svg class="spark" viewBox="0 0 80 32" preserveAspectRatio="none"><polyline fill="none" stroke="${s.change >= 0 ? '#10b981' : '#ef4444'}" stroke-width="1.6" vector-effect="non-scaling-stroke" points="${points}"/></svg>`;
+      spark = `<svg class="spark" viewBox="0 0 100 52" preserveAspectRatio="none"><polyline fill="none" stroke="${s.change >= 0 ? '#10b981' : '#ef4444'}" stroke-width="2" vector-effect="non-scaling-stroke" points="${points}"/></svg>`;
     }
     return `<div class="item stock-row">
       <div class="stock-label"><strong>${s.symbol}</strong> $${s.price.toFixed(2)}
