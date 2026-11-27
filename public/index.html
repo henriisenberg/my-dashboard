@@ -488,7 +488,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
     <div class="panel-content" id="motive-content"><div class="loading">Loading…</div></div>
   </section>
 </main>
-<footer>v111 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Home station via Ambient Weather · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
+<footer>v112 · Weather data by <a href="https://open-meteo.com/" target="_blank" style="color:inherit">Open-Meteo</a> · Home station via Ambient Weather · Stocks via Yahoo Finance · Earnings via Nasdaq · Business news via CNBC · Sports via ESPN</footer>
 
 <div id="settings-modal" class="modal hidden">
   <div class="modal-content">
@@ -512,7 +512,7 @@ footer { text-align: center; font-size: 0.7rem; opacity: 0.5; padding: 0.2rem; f
         <label>Rows</label>
         <input type="number" id="canvas-rows" min="1" max="6" value="3">
       </div>
-      <p class="hint">Columns and rows apply in Fixed mode. Widgets grow into empty cells so the page stays full. Auto zoom shrinks a panel to fit, from 100% down to 50%.</p>
+      <p class="hint">Columns and rows apply in Fixed mode. Sizes run from 1×1 through 3×3. If a size does not fit, it steps down, then widgets grow into empty cells.</p>
       <label>Widgets — show, and size</label>
       <div id="widget-settings"></div>
     </div>
@@ -714,8 +714,21 @@ function packWidgets(items, cols, rowLimit) {
   for (const item of items) {
     const wantC = Math.min(Math.max(1, item.c), cols);
     const wantR = Math.max(1, item.r);
-    let ok = place(item, wantC, wantR, rowLimit);
-    if (!ok && (wantC > 1 || wantR > 1)) ok = place(item, 1, 1, rowLimit);
+    const choices = [];
+    const seen = new Set();
+    for (let w = wantC; w >= 1; w--) {
+      for (let h = wantR; h >= 1; h--) {
+        const key = w + 'x' + h;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        choices.push([w, h]);
+      }
+    }
+    choices.sort((a, b) => (b[0] * b[1]) - (a[0] * a[1]));
+    let ok = false;
+    for (const [w, h] of choices) {
+      if (place(item, w, h, rowLimit)) { ok = true; break; }
+    }
     if (!ok) ok = place(item, 1, 1, 0);
     if (ok) placed.push(item);
   }
@@ -2440,7 +2453,7 @@ function setupSettingsUI() {
           ${ropt(15,'15s')}${ropt(30,'30s')}${ropt(60,'1m')}${ropt(120,'2m')}${ropt(300,'5m')}${ropt(600,'10m')}${ropt(1800,'30m')}${ropt(3600,'1h')}
         </select>
         <select data-widget-size="${key}">
-          ${opt('1x1', '1×1')}${opt('2x1', '2×1')}${opt('1x2', '1×2')}${opt('2x2', '2×2')}
+          ${opt('1x1', '1×1')}${opt('2x1', '2×1')}${opt('3x1', '3×1')}${opt('1x2', '1×2')}${opt('2x2', '2×2')}${opt('3x2', '3×2')}${opt('1x3', '1×3')}${opt('2x3', '2×3')}${opt('3x3', '3×3')}
         </select>
         <select data-widget-zoom="${key}" title="Zoom. Auto shrinks to fit. 100% is the largest.">
           ${zopt('auto', 'Auto')}${zopt(100, '100%')}${zopt(90, '90%')}${zopt(80, '80%')}${zopt(70, '70%')}${zopt(60, '60%')}${zopt(50, '50%')}
